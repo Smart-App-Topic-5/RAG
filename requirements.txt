@@ -1,0 +1,7 @@
+langchain
+networkx           # Per la visualizzazione del grafo
+matplotlib         # Per il disegno del grafo
+numpy              # Spesso usato in combinazione con NetworkX
+langchain-community
+transformers
+torch
