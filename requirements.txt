@@ -5,3 +5,7 @@ numpy              # Spesso usato in combinazione con NetworkX
 langchain-community
 transformers
 torch
+nltk
+faiss-cpu
+rouge
+sentence-transformers
