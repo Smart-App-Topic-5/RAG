@@ -7,8 +7,7 @@ This project aims to monitor and manage the efficiency and performance of machin
 ## Project Goals
 
 1. **Creation and management of a machine and KPI graph**: Machines are represented as nodes and connected to KPI nodes that monitor specific metrics.
-2. **Calculation and updating of KPIs**: The system calculates complex indicators, such as utilization time and available time, and manages normal value ranges for each KPI.
-3. **Query retrieval and response**: Using NLP models, the system answers user questions about machinery KPIs, providing specific information.
+3. **Query retrieval and response**: Using LLM models, the system answers user questions about machinery KPIs, providing specific information.
 4. **Integration with embedding models**: The project uses Sentence Transformers and FAISS for retrieval of relevant information based on queries.
 
 ## Development Phases
@@ -29,9 +28,8 @@ This project aims to monitor and manage the efficiency and performance of machin
 
 ### 4. Query Answering via NLP Models
 - **Models used**: FLAN-T5 is used for both query classification and text response generation.
-- **Classification and generation pipeline**: Inference pipelines determine whether the query can be answered with the current data and, if so, provide the response.
-- **Query handling function `steps`**: Based on available information, this function decides whether to respond directly to the query or suggest other actions.
-
+- **Classification and generation pipeline**: Inference pipelines determine whether the query can be answered with the current data and, if so, provide the response. Otherwise, it provides necessary information to pass to the KPI Calculation Engine.
+  
 ### 5. Usage Examples and Testing
 Example questions tested:
 - "How many Laser Cutter machines are there?"
