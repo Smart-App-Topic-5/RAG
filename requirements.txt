@@ -1,11 +1,8 @@
-langchain
 networkx           
-matplotlib         
 numpy              
-langchain-community
+networkx
+numpy
 transformers
 torch
-nltk
 faiss-cpu
-rouge
 sentence-transformers
