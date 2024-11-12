@@ -1,7 +1,7 @@
 langchain
-networkx           # Per la visualizzazione del grafo
-matplotlib         # Per il disegno del grafo
-numpy              # Spesso usato in combinazione con NetworkX
+networkx           
+matplotlib         
+numpy              
 langchain-community
 transformers
 torch
