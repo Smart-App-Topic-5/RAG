@@ -1,0 +1,22 @@
+# requirements.txt
+langchain_community
+langchain-openai
+tiktoken
+langchainhub
+chromadb
+langchain
+transformers
+faiss-cpu
+networkx
+huggingface-hub
+pandas
+tabulate
+matplotlib
+
+# Instructions for installing oollama
+
+# Visit the following link to download oollama:
+# https://ollama.com/download
+
+# Once downloaded, use the following terminal command to install the model locally:
+# ollama pull mistral

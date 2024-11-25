@@ -1,0 +1,94 @@
+{
+    "machines": [
+      { "id": "lwm_1", "name": "Laser Wielding Machine 1", "installed_date": "1/1/1999", "type": "Laser welding" },
+      { "id": "lwm_2", "name": "Laser Wielding Machine 2", "installed_date": "31/12/2000", "type": "Laser welding" },
+      { "id": "lccm_1", "name": "Large Capacity Cutting Machine 1", "installed_date": "17/09/2000", "type": "Metal cutting" },
+      { "id": "lccm_2", "name": "Large Capacity Cutting Machine 2", "installed_date": "17/09/2000", "type": "Metal cutting" },
+      { "id": "mccm_1", "name": "Medium Capacity Cutting Machine 1", "installed_date": "20/10/2001", "type": "Metal cutting" },
+      { "id": "mccm_2", "name": "Medium Capacity Cutting Machine 2", "installed_date": "26/11/1999", "type": "Metal cutting" }
+    ],
+    "kpis": [
+      { "id": "wt", "name": "Working Time", "has_formula": false, "formula": "", "frequency": 50, "description": "Time actively working", "unit": "seconds" },
+      { "id": "it", "name": "Idle Time", "has_formula": false, "formula": "", "frequency": 50, "description": "Time working but not used", "unit": "seconds" },
+      { "id": "ot", "name": "Offline Time", "has_formula": false, "formula": "", "frequency": 50, "description": "Time offline and not available", "unit": "seconds" },
+      { "id": "consumption", "name": "Consumption", "has_formula": true, "formula": "Consumption working + consumption idle", "frequency": 50, "description": "Energy consumed by the machine", "unit": "kWh" },
+      { "id": "power", "name": "Power", "has_formula": false, "formula": "", "frequency": 50, "description": "Power consumed by the machine", "unit": "kW" },
+      { "id": "consumption_working", "name": "Consumption Working", "has_formula": false, "formula": "", "frequency": 50, "description": "Energy consumed by the machine while working", "unit": "kWh" },
+      { "id": "cycles", "name": "Cycles", "has_formula": true, "formula": "Good cycles + Bad cycles", "frequency": 100, "description": "Number of cycles of the machine", "unit": "" },
+      { "id": "good_cycles", "name": "Good Cycles", "has_formula": false, "formula": "", "frequency": 100, "description": "Number of good cycles of the machine", "unit": "" },
+      { "id": "bad_cycles", "name": "Bad Cycles", "has_formula": false, "formula": "", "frequency": 100, "description": "Number of bad cycles of the machine", "unit": "" },
+      { "id": "average_cycle_time", "name": "Average Cycle Time", "has_formula": true, "formula": "Cycles / 60", "frequency": 100, "description": "Average time of cycles in a minute", "unit": "second" }
+    ],
+    "relationships": [
+        { "source": "wt", "target": "lwm_1", "relationship": "associatedWith" },
+        { "source": "wt", "target": "lwm_2", "relationship": "associatedWith" },
+        { "source": "wt", "target": "lccm_1", "relationship": "associatedWith" },
+        { "source": "wt", "target": "lccm_2", "relationship": "associatedWith" },
+        { "source": "wt", "target": "mccm_1", "relationship": "associatedWith" },
+        { "source": "wt", "target": "mccm_2", "relationship": "associatedWith" },
+
+        { "source": "it", "target": "lwm_1", "relationship": "associatedWith" },
+        { "source": "it", "target": "lwm_2", "relationship": "associatedWith" },
+        { "source": "it", "target": "lccm_1", "relationship": "associatedWith" },
+        { "source": "it", "target": "lccm_2", "relationship": "associatedWith" },
+        { "source": "it", "target": "mccm_1", "relationship": "associatedWith" },
+        { "source": "it", "target": "mccm_2", "relationship": "associatedWith" },
+
+        { "source": "ot", "target": "lwm_1", "relationship": "associatedWith" },
+        { "source": "ot", "target": "lwm_2", "relationship": "associatedWith" },
+        { "source": "ot", "target": "lccm_1", "relationship": "associatedWith" },
+        { "source": "ot", "target": "lccm_2", "relationship": "associatedWith" },
+        { "source": "ot", "target": "mccm_1", "relationship": "associatedWith" },
+        { "source": "ot", "target": "mccm_2", "relationship": "associatedWith" },
+
+        { "source": "consumption", "target": "lwm_1", "relationship": "associatedWith" },
+        { "source": "consumption", "target": "lwm_2", "relationship": "associatedWith" },
+        { "source": "consumption", "target": "lccm_1", "relationship": "associatedWith" },
+        { "source": "consumption", "target": "lccm_2", "relationship": "associatedWith" },
+        { "source": "consumption", "target": "mccm_1", "relationship": "associatedWith" },
+        { "source": "consumption", "target": "mccm_2", "relationship": "associatedWith" },
+
+        { "source": "power", "target": "lwm_1", "relationship": "associatedWith" },
+        { "source": "power", "target": "lwm_2", "relationship": "associatedWith" },
+        { "source": "power", "target": "lccm_1", "relationship": "associatedWith" },
+        { "source": "power", "target": "lccm_2", "relationship": "associatedWith" },
+        { "source": "power", "target": "mccm_1", "relationship": "associatedWith" },
+        { "source": "power", "target": "mccm_2", "relationship": "associatedWith" },
+
+        { "source": "consumption_working", "target": "lwm_1", "relationship": "associatedWith" },
+        { "source": "consumption_working", "target": "lwm_2", "relationship": "associatedWith" },
+        { "source": "consumption_working", "target": "lccm_1", "relationship": "associatedWith" },
+        { "source": "consumption_working", "target": "lccm_2", "relationship": "associatedWith" },
+        { "source": "consumption_working", "target": "mccm_1", "relationship": "associatedWith" },
+        { "source": "consumption_working", "target": "mccm_2", "relationship": "associatedWith" },
+
+        { "source": "cycles", "target": "lwm_1", "relationship": "associatedWith" },
+        { "source": "cycles", "target": "lwm_2", "relationship": "associatedWith" },
+        { "source": "cycles", "target": "lccm_1", "relationship": "associatedWith" },
+        { "source": "cycles", "target": "lccm_2", "relationship": "associatedWith" },
+        { "source": "cycles", "target": "mccm_1", "relationship": "associatedWith" },
+        { "source": "cycles", "target": "mccm_2", "relationship": "associatedWith" },
+
+        { "source": "good_cycles", "target": "lwm_1", "relationship": "associatedWith" },
+        { "source": "good_cycles", "target": "lwm_2", "relationship": "associatedWith" },
+        { "source": "good_cycles", "target": "lccm_1", "relationship": "associatedWith" },
+        { "source": "good_cycles", "target": "lccm_2", "relationship": "associatedWith" },
+        { "source": "good_cycles", "target": "mccm_1", "relationship": "associatedWith" },
+        { "source": "good_cycles", "target": "mccm_2", "relationship": "associatedWith" },
+
+        { "source": "bad_cycles", "target": "lwm_1", "relationship": "associatedWith" },
+        { "source": "bad_cycles", "target": "lwm_2", "relationship": "associatedWith" },
+        { "source": "bad_cycles", "target": "lccm_1", "relationship": "associatedWith" },
+        { "source": "bad_cycles", "target": "lccm_2", "relationship": "associatedWith" },
+        { "source": "bad_cycles", "target": "mccm_1", "relationship": "associatedWith" },
+        { "source": "bad_cycles", "target": "mccm_2", "relationship": "associatedWith" },
+
+        { "source": "average_cycle_time", "target": "lwm_1", "relationship": "associatedWith" },
+        { "source": "average_cycle_time", "target": "lwm_2", "relationship": "associatedWith" },
+        { "source": "average_cycle_time", "target": "lccm_1", "relationship": "associatedWith" },
+        { "source": "average_cycle_time", "target": "lccm_2", "relationship": "associatedWith" },
+        { "source": "average_cycle_time", "target": "mccm_1", "relationship": "associatedWith" },
+        { "source": "average_cycle_time", "target": "mccm_2", "relationship": "associatedWith" }
+    ]
+  }
+  
