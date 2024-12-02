@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: RAG
+    ports:
+      - "5000:5000"  # Espone la porta 5000 al tuo sistema host
+    volumes:
+      - .:/app  # Sincronizza la directory corrente nel container
+    stdin_open: true  # Consente l'interazione con il container
+    tty: true  # Abilita un terminale virtuale
