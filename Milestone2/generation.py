@@ -24,6 +24,8 @@ from tabulate import tabulate
 import matplotlib.pyplot as plt
 import requests
 import os
+import threading
+import time
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -353,6 +355,19 @@ def describe_networkx_graph(G):
 
     return descriptions
 
+
+
+def periodic_read_kb():
+    while True:
+        print("Reading kb...")
+        #read_kb()  #! Read the KB
+        time.sleep(3600)  
+        print("completed reading kb")
+
+
+# Avvia il thread
+thread = threading.Thread(target=periodic_read_kb, daemon=True)
+thread.start()
 
 def read_kb():
     url = "http://127.0.0.1:8080/read-kb"
