@@ -1,13 +1,13 @@
-# Utilizzare un'immagine base di Python
+# Usa Python come immagine base
 FROM python:3.9-slim
 
-# Impostare la directory di lavoro
+# Imposta la directory di lavoro
 WORKDIR /app
 
-# Copiare i file del progetto nella directory di lavoro
-COPY . .
+# Copia solo il file dei requisiti per sfruttare la cache Docker
+COPY Milestone2/Requirements.txt .
 
-# Installare le dipendenze di sistema richieste
+# Installa le dipendenze di sistema necessarie
 RUN apt-get update && apt-get install -y \
     build-essential \
     libopenblas-dev \
@@ -16,28 +16,17 @@ RUN apt-get update && apt-get install -y \
     libxft-dev \
     libjpeg-dev \
     zlib1g-dev \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Installare le dipendenze Python
-RUN pip install --no-cache-dir --default-timeout=10000 \
-    numpy \
-    pandas \
-    matplotlib \
-    torch \
-    transformers \
-    langchain \
-    langchain-core \
-    langchain-openai \
-    langchain-community \
-    faiss-cpu \
-    flask \
-    requests \
-    tabulate \
-    networkx \
-    huggingface_hub \
-    openai \
-    fpdf \
-    sentence-transformers
+# Installa le dipendenze Python utilizzando il file requirements.txt
+RUN pip install --no-cache-dir -r Requirements.txt
 
-# Specificare il comando di avvio
-CMD ["python", "Milestone2/Milestone2.py"]
+# Copia il resto dei file del progetto nella directory di lavoro
+COPY . .
+
+# Aggiungi un healthcheck per verificare la comunicazione con il container di Ollama
+HEALTHCHECK --interval=30s CMD curl -f http://localhost:11434/v1 || exit 1
+
+# Specifica il comando di avvio
+CMD ["python", "Milestone2/generation.py"]

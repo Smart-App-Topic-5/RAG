@@ -1,17 +1,24 @@
 # requirements.txt
-langchain_community
-langchain-openai
-tiktoken
-langchainhub
-chromadb
-langchain
-transformers
-faiss-cpu
-networkx
-huggingface-hub
-pandas
-tabulate
-matplotlib
+numpy 
+pandas 
+matplotlib 
+torch 
+transformers 
+langchain 
+langchain-core 
+langchain-openai 
+langchain-community 
+faiss-cpu 
+flask 
+requests 
+tabulate 
+networkx 
+huggingface_hub 
+openai 
+fpdf 
+sentence-transformers
+
+
 
 # Instructions for installing oollama
 
