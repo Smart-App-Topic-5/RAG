@@ -1,94 +1,38 @@
 {
-    "machines": [
-      { "id": "lwm_1", "name": "Laser Wielding Machine 1", "installed_date": "1/1/1999", "type": "Laser welding" },
-      { "id": "lwm_2", "name": "Laser Wielding Machine 2", "installed_date": "31/12/2000", "type": "Laser welding" },
-      { "id": "lccm_1", "name": "Large Capacity Cutting Machine 1", "installed_date": "17/09/2000", "type": "Metal cutting" },
-      { "id": "lccm_2", "name": "Large Capacity Cutting Machine 2", "installed_date": "17/09/2000", "type": "Metal cutting" },
-      { "id": "mccm_1", "name": "Medium Capacity Cutting Machine 1", "installed_date": "20/10/2001", "type": "Metal cutting" },
-      { "id": "mccm_2", "name": "Medium Capacity Cutting Machine 2", "installed_date": "26/11/1999", "type": "Metal cutting" }
-    ],
-    "kpis": [
-      { "id": "wt", "name": "Working Time", "has_formula": false, "formula": "", "frequency": 50, "description": "Time actively working", "unit": "seconds" },
-      { "id": "it", "name": "Idle Time", "has_formula": false, "formula": "", "frequency": 50, "description": "Time working but not used", "unit": "seconds" },
-      { "id": "ot", "name": "Offline Time", "has_formula": false, "formula": "", "frequency": 50, "description": "Time offline and not available", "unit": "seconds" },
-      { "id": "consumption", "name": "Consumption", "has_formula": true, "formula": "Consumption working + consumption idle", "frequency": 50, "description": "Energy consumed by the machine", "unit": "kWh" },
-      { "id": "power", "name": "Power", "has_formula": false, "formula": "", "frequency": 50, "description": "Power consumed by the machine", "unit": "kW" },
-      { "id": "consumption_working", "name": "Consumption Working", "has_formula": false, "formula": "", "frequency": 50, "description": "Energy consumed by the machine while working", "unit": "kWh" },
-      { "id": "cycles", "name": "Cycles", "has_formula": true, "formula": "Good cycles + Bad cycles", "frequency": 100, "description": "Number of cycles of the machine", "unit": "" },
-      { "id": "good_cycles", "name": "Good Cycles", "has_formula": false, "formula": "", "frequency": 100, "description": "Number of good cycles of the machine", "unit": "" },
-      { "id": "bad_cycles", "name": "Bad Cycles", "has_formula": false, "formula": "", "frequency": 100, "description": "Number of bad cycles of the machine", "unit": "" },
-      { "id": "average_cycle_time", "name": "Average Cycle Time", "has_formula": true, "formula": "Cycles / 60", "frequency": 100, "description": "Average time of cycles in a minute", "unit": "second" }
-    ],
-    "relationships": [
-        { "source": "wt", "target": "lwm_1", "relationship": "associatedWith" },
-        { "source": "wt", "target": "lwm_2", "relationship": "associatedWith" },
-        { "source": "wt", "target": "lccm_1", "relationship": "associatedWith" },
-        { "source": "wt", "target": "lccm_2", "relationship": "associatedWith" },
-        { "source": "wt", "target": "mccm_1", "relationship": "associatedWith" },
-        { "source": "wt", "target": "mccm_2", "relationship": "associatedWith" },
-
-        { "source": "it", "target": "lwm_1", "relationship": "associatedWith" },
-        { "source": "it", "target": "lwm_2", "relationship": "associatedWith" },
-        { "source": "it", "target": "lccm_1", "relationship": "associatedWith" },
-        { "source": "it", "target": "lccm_2", "relationship": "associatedWith" },
-        { "source": "it", "target": "mccm_1", "relationship": "associatedWith" },
-        { "source": "it", "target": "mccm_2", "relationship": "associatedWith" },
-
-        { "source": "ot", "target": "lwm_1", "relationship": "associatedWith" },
-        { "source": "ot", "target": "lwm_2", "relationship": "associatedWith" },
-        { "source": "ot", "target": "lccm_1", "relationship": "associatedWith" },
-        { "source": "ot", "target": "lccm_2", "relationship": "associatedWith" },
-        { "source": "ot", "target": "mccm_1", "relationship": "associatedWith" },
-        { "source": "ot", "target": "mccm_2", "relationship": "associatedWith" },
-
-        { "source": "consumption", "target": "lwm_1", "relationship": "associatedWith" },
-        { "source": "consumption", "target": "lwm_2", "relationship": "associatedWith" },
-        { "source": "consumption", "target": "lccm_1", "relationship": "associatedWith" },
-        { "source": "consumption", "target": "lccm_2", "relationship": "associatedWith" },
-        { "source": "consumption", "target": "mccm_1", "relationship": "associatedWith" },
-        { "source": "consumption", "target": "mccm_2", "relationship": "associatedWith" },
-
-        { "source": "power", "target": "lwm_1", "relationship": "associatedWith" },
-        { "source": "power", "target": "lwm_2", "relationship": "associatedWith" },
-        { "source": "power", "target": "lccm_1", "relationship": "associatedWith" },
-        { "source": "power", "target": "lccm_2", "relationship": "associatedWith" },
-        { "source": "power", "target": "mccm_1", "relationship": "associatedWith" },
-        { "source": "power", "target": "mccm_2", "relationship": "associatedWith" },
-
-        { "source": "consumption_working", "target": "lwm_1", "relationship": "associatedWith" },
-        { "source": "consumption_working", "target": "lwm_2", "relationship": "associatedWith" },
-        { "source": "consumption_working", "target": "lccm_1", "relationship": "associatedWith" },
-        { "source": "consumption_working", "target": "lccm_2", "relationship": "associatedWith" },
-        { "source": "consumption_working", "target": "mccm_1", "relationship": "associatedWith" },
-        { "source": "consumption_working", "target": "mccm_2", "relationship": "associatedWith" },
-
-        { "source": "cycles", "target": "lwm_1", "relationship": "associatedWith" },
-        { "source": "cycles", "target": "lwm_2", "relationship": "associatedWith" },
-        { "source": "cycles", "target": "lccm_1", "relationship": "associatedWith" },
-        { "source": "cycles", "target": "lccm_2", "relationship": "associatedWith" },
-        { "source": "cycles", "target": "mccm_1", "relationship": "associatedWith" },
-        { "source": "cycles", "target": "mccm_2", "relationship": "associatedWith" },
-
-        { "source": "good_cycles", "target": "lwm_1", "relationship": "associatedWith" },
-        { "source": "good_cycles", "target": "lwm_2", "relationship": "associatedWith" },
-        { "source": "good_cycles", "target": "lccm_1", "relationship": "associatedWith" },
-        { "source": "good_cycles", "target": "lccm_2", "relationship": "associatedWith" },
-        { "source": "good_cycles", "target": "mccm_1", "relationship": "associatedWith" },
-        { "source": "good_cycles", "target": "mccm_2", "relationship": "associatedWith" },
-
-        { "source": "bad_cycles", "target": "lwm_1", "relationship": "associatedWith" },
-        { "source": "bad_cycles", "target": "lwm_2", "relationship": "associatedWith" },
-        { "source": "bad_cycles", "target": "lccm_1", "relationship": "associatedWith" },
-        { "source": "bad_cycles", "target": "lccm_2", "relationship": "associatedWith" },
-        { "source": "bad_cycles", "target": "mccm_1", "relationship": "associatedWith" },
-        { "source": "bad_cycles", "target": "mccm_2", "relationship": "associatedWith" },
-
-        { "source": "average_cycle_time", "target": "lwm_1", "relationship": "associatedWith" },
-        { "source": "average_cycle_time", "target": "lwm_2", "relationship": "associatedWith" },
-        { "source": "average_cycle_time", "target": "lccm_1", "relationship": "associatedWith" },
-        { "source": "average_cycle_time", "target": "lccm_2", "relationship": "associatedWith" },
-        { "source": "average_cycle_time", "target": "mccm_1", "relationship": "associatedWith" },
-        { "source": "average_cycle_time", "target": "mccm_2", "relationship": "associatedWith" }
-    ]
-  }
-  
+  "machines": [
+    { "id": 1, "machineType": "Laser cutter", "productionLine": 2, "factory": "Ghezzano Plant 1", "name": "Laser Welding Machine 2" },
+    { "id": 2, "machineType": "3D Printer", "productionLine": 1, "factory": "Ghezzano Plant 2", "name": "3D Printer Alpha" },
+    { "id": 3, "machineType": "CNC Mill", "productionLine": 3, "factory": "Pisa Plant", "name": "CNC Milling Machine X" },
+    { "id": 4, "machineType": "Press", "productionLine": 1, "factory": "Lucca Factory", "name": "Hydraulic Press Z" },
+    { "id": 5, "machineType": "Injection Molder", "productionLine": 2, "factory": "Florence Factory", "name": "Injection Molder Y" },
+    { "id": 6, "machineType": "Laser cutter", "productionLine": 3, "factory": "Ghezzano Plant 1", "name": "Laser Cutter Beta" },
+    { "id": 7, "machineType": "Welding Robot", "productionLine": 1, "factory": "Ghezzano Plant 3", "name": "Welding Robot Delta" },
+    { "id": 8, "machineType": "CNC Lathe", "productionLine": 4, "factory": "Pisa Plant", "name": "Lathe Machine Gamma" },
+    { "id": 9, "machineType": "Drill Press", "productionLine": 2, "factory": "Lucca Factory", "name": "Drill Press Omega" },
+    { "id": 10, "machineType": "Laser Engraver", "productionLine": 5, "factory": "Florence Factory", "name": "Engraver Sigma" }
+  ],
+  "kpis": [
+    { "nameID": "good_cycles", "description": "Good Cycles", "formula": null, "category": "Energy", "unit": "W", "relationNumber": 1 },
+    { "nameID": "power_consumption", "description": "Power Consumption", "formula": "total_energy/operating_hours", "category": "Energy", "unit": "kWh", "relationNumber": 2 },
+    { "nameID": "downtime", "description": "Downtime", "formula": null, "category": "Performance", "unit": "h", "relationNumber": 3 },
+    { "nameID": "output_rate", "description": "Output Rate", "formula": "produced_units/operating_hours", "category": "Performance", "unit": "units/h", "relationNumber": 4 },
+    { "nameID": "efficiency", "description": "Efficiency", "formula": "actual_output/expected_output", "category": "Performance", "unit": "%", "relationNumber": 5 },
+    { "nameID": "temperature", "description": "Machine Temperature", "formula": null, "category": "Environment", "unit": "°C", "relationNumber": 6 },
+    { "nameID": "vibration", "description": "Machine Vibration", "formula": null, "category": "Environment", "unit": "mm/s", "relationNumber": 7 },
+    { "nameID": "material_usage", "description": "Material Usage", "formula": "used_material/produced_units", "category": "Materials", "unit": "kg/unit", "relationNumber": 8 },
+    { "nameID": "cycle_time", "description": "Cycle Time", "formula": null, "category": "Performance", "unit": "s", "relationNumber": 9 },
+    { "nameID": "defect_rate", "description": "Defect Rate", "formula": "defective_units/total_units", "category": "Quality", "unit": "%", "relationNumber": 10 }
+  ],
+  "relation": [
+    { "machineID": 1, "kpiID": "good_cycles" },
+    { "machineID": 2, "kpiID": "power_consumption" },
+    { "machineID": 3, "kpiID": "downtime" },
+    { "machineID": 4, "kpiID": "output_rate" },
+    { "machineID": 5, "kpiID": "efficiency" },
+    { "machineID": 6, "kpiID": "temperature" },
+    { "machineID": 7, "kpiID": "vibration" },
+    { "machineID": 8, "kpiID": "material_usage" },
+    { "machineID": 9, "kpiID": "cycle_time" },
+    { "machineID": 10, "kpiID": "defect_rate" }
+  ]
+}

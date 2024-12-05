@@ -257,7 +257,6 @@ chain6 = (
 )
 
 
-
 def build_graph_from_json(json_file_path):
     # Crea un grafo vuoto
     G = nx.DiGraph()
@@ -272,88 +271,85 @@ def build_graph_from_json(json_file_path):
             machine["id"],
             node_type="Machine",
             name=machine["name"],
-            installed_date=machine["installed_date"],
-            machine_type=machine["type"]
+            production_line=machine["productionLine"],
+            factory=machine["factory"],
+            machine_type=machine["machineType"]
         )
 
     # Aggiungi i nodi KPI
     for kpi in data.get("kpis", []):
         G.add_node(
-            kpi["id"],
-            node_type="Base KPI" if not kpi.get("has_formula", False) else "Derived KPI",
-            name=kpi["name"],
-            description=kpi["description"],
+            kpi["nameID"],
+            node_type="Base KPI" if kpi.get("formula") is None else "Derived KPI",
+            name=kpi["description"],
+            category=kpi["category"],
             unit=kpi["unit"],
-            frequency=kpi["frequency"],
+            relation_number=kpi["relationNumber"],
             formula=kpi.get("formula")
         )
 
     # Aggiungi le relazioni
-    for rel in data.get("relationships", []):
+    for rel in data.get("relation", []):
         G.add_edge(
-            rel["source"],
-            rel["target"],
-            relationship=rel["relationship"]
+            rel["machineID"],
+            rel["kpiID"],
+            relationship="monitors"
         )
 
     return G
 
 
 def describe_networkx_graph(G):
-    # Initialize the description dictionary
+    # Dizionario per descrizioni
     descriptions = {}
     
-    # Describe machine nodes
+    # Descrivi i nodi delle macchine
     machine_nodes = [node for node, data in G.nodes(data=True) if data.get("node_type") == "Machine"]
 
     for node in machine_nodes:
         data = G.nodes[node]
         machine_name = data.get("name", "unknown name")
         machine_type = data.get("machine_type", "Unknown type")
-        installed_date = data.get('installed_date', 'an unknown date')
+        production_line = data.get("production_line", "unknown line")
+        factory = data.get("factory", "unknown factory")
 
         incoming_edges = G.in_edges(node)
         source_nodes = [edge[0] for edge in incoming_edges]
         kpi_names = [G.nodes[source].get('name', '') for source in source_nodes]
         concatenated_kpi_names = ", ".join(kpi_names)
         
-        # Generate description for the machine
-        description = f"It is a {machine_type} machine, installed on {installed_date}."
+        # Genera descrizione per la macchina
+        description = f"It is a {machine_type} machine located in {factory} on production line {production_line}."
         
         if kpi_names:
-            description += f" It has associated the following KPIs: {concatenated_kpi_names}."
+            description += f" It monitors the following KPIs: {concatenated_kpi_names}."
         else:
             description += " It has no KPIs associated with it."
 
         descriptions[machine_name] = description
     
-    # Describe KPI nodes
+    # Descrivi i nodi dei KPI
     kpi_nodes = [node for node, data in G.nodes(data=True) if "Base KPI" in data.get("node_type", "") or "Derived KPI" in data.get("node_type", "")]
     
     for node in kpi_nodes:
         data = G.nodes[node]
         kpi_name = data.get('name', 'unknown name')
+        category = data.get('category', 'unknown category')
         has_formula = "Derived KPI" in data.get("node_type", "")
         formula = data.get('formula', 'no formula') if has_formula else 'no formula'
-        frequency = data.get('frequency', 'unknown frequency')
-        desc = data.get('description', 'no description')
         unit = data.get('unit', 'unknown unit')
         
-        description = f"It is a KPI. It tracks {desc}. It operates at a frequency of {frequency}. "
+        description = f"It is a KPI in the {category} category. "
         if has_formula:
-            description += f"It uses the formula: {formula}. "
+            description += f"It is a derived KPI and uses the formula: {formula}. "
         else:
-            description += "It does not have a formula."
-          
-        if unit:
-            description += f"The unit of measurement is {unit}."
-        else:
-            description += " It has no unit of measurement."
-
-
+            description += "It is a base KPI with no formula."
+        
+        description += f"The unit of measurement is {unit}."
         descriptions[kpi_name] = description
 
     return descriptions
+
 
 
 
@@ -370,7 +366,7 @@ thread = threading.Thread(target=periodic_read_kb, daemon=True)
 thread.start()
 
 def read_kb():
-    url = "http://127.0.0.1:8080/read-kb"
+    url = "https://api-layer/machineXKPI"
 
     try:
         response = requests.get(url)
