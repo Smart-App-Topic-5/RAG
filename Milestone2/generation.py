@@ -38,9 +38,6 @@ model = ChatOpenAI(
     model_name = 'mistral'
 )
 
-
-
-
 # PROMPTS 
 enough_info_prompt = ChatPromptTemplate.from_template(
     """
@@ -140,7 +137,6 @@ single_value_prompt = ChatPromptTemplate.from_template(
     """
 )
 
-
 description_prompt = ChatPromptTemplate.from_template(
     """
     Provide a concise one-sentence description of the content based on the given query.
@@ -157,7 +153,6 @@ description_prompt = ChatPromptTemplate.from_template(
     Answer:
     """
 )
-
 
 report_prompt = ChatPromptTemplate.from_template(
     """
@@ -256,7 +251,6 @@ chain6 = (
     | StrOutputParser()  
 )
 
-
 def build_graph_from_json(json_file_path):
     # Crea un grafo vuoto
     G = nx.DiGraph()
@@ -297,7 +291,6 @@ def build_graph_from_json(json_file_path):
         )
 
     return G
-
 
 def describe_networkx_graph(G):
     # Dizionario per descrizioni
@@ -350,16 +343,12 @@ def describe_networkx_graph(G):
 
     return descriptions
 
-
-
-
 def periodic_read_kb():
     while True:
         print("Reading kb...")
         #read_kb()  #! Read the KB
         time.sleep(3600)  
         print("completed reading kb")
-
 
 # Avvia il thread
 thread = threading.Thread(target=periodic_read_kb, daemon=True)
@@ -396,7 +385,6 @@ def read_kb():
 
     except Exception as e:
         print(f"An error occurred: {e}")
-
 
 
 def faiss_generation():
@@ -447,7 +435,6 @@ def faiss_generation():
 
     return embeddings, vector_store
 
-
 # FORMAT VALUES TO CONTACT THE KPI ENGINE
 def extract_json_from_llm_response(response):
     matches = re.findall(r'\{.*?\}', response, re.DOTALL)
@@ -474,8 +461,26 @@ def extract_json_from_llm_response(response):
                 result[key] = value
                 break
     
-    return result
+    #dalla kb dato un machine_name prendi il suo id dal file kb_path
+    with open(KB_PATH, "r") as file:
+        kb_data = json.load(file)
+    
+    machine_id = None
+    #prendi l'id
+    for machine in kb_data.get("machines", []):
+        if machine["name"] == result["machine_name"]:
+            machine_id = machine["id"]
+            break
+    
+    if result["end_range"] is None:
+        result["end_range"] = result["start_range"]
+    
+    if result["aggregation"] is None:
+        result["aggregation"] = "daily"
 
+    result["machine_id"] = machine_id
+    
+    return result
 
 # FORMAT REPORT TO CONTACT GUI
 def parse_report_to_dict(report_text):
@@ -523,7 +528,6 @@ def parse_report_to_dict(report_text):
     
     return report_data
 
-
 # FUNCTIONS TO DEFINE THE KIND OF CONTACT WITH GUI 
 def generate_string(textual_response):
     """
@@ -561,7 +565,6 @@ def generate_report(report):
     }
     return data_6
 
-
 def generate_dashboard(values, intro_string, x_axis_name, y_axis_name):
     """
     Generates a structured dashboard object.
@@ -585,10 +588,9 @@ def generate_dashboard(values, intro_string, x_axis_name, y_axis_name):
     }
     return data_6
 
-
 # FUNCTION TO ELABORATE KPI ENGINE RESPONSE
-def response_creation(query, kpi_response):
-    if "value" in kpi_response:
+def response_creation(query, kpi_response, kpi_name):
+    if len(kpi_response["values"])==1:
         kpi_value = kpi_response["value"]
         unit = kpi_response["unit"]
 
@@ -597,9 +599,8 @@ def response_creation(query, kpi_response):
         response_4 = generate_string(response_4)
         return response_4
 
-    elif "values" in kpi_response:
+    else:
         values = kpi_response["values"]
-        kpi_name = kpi_response["kpi_name"]
 
         if "report" in query.lower():
             input_data = {'query': query, 'data': values}
@@ -614,7 +615,6 @@ def response_creation(query, kpi_response):
             response_5 = generate_dashboard(values, intro_string, x_axis_name, "Values")
 
             return response_5
-
 
 # FUNCTION TO CALL THE RAG PIPELINE
 def steps(query, context, date):
@@ -632,10 +632,16 @@ def steps(query, context, date):
 
         response_3 = extract_json_from_llm_response(response_3)
         #####! TOPIC KPI ENGINE
-        kpi_url = "http://127.0.0.1:8080/kpi-engine"
+        kpi_url = "https://api-layer/KPI/"+response_3.get("KPI_name")+"/"+response_3.get("machine_id")+"/values"
 
         try:
-            response_kpi = requests.post(kpi_url)
+            headers_to_send={
+                "aggregationInterval": response_3.get("aggregation"),
+                "aggregationOP": response_3.get("operation"),
+                "startDate": response_3.get("start_range"),
+                "endDate": response_3.get("end_range")
+            }
+            response_kpi = requests.post(kpi_url,headers=headers_to_send)
             
             if response_kpi.status_code == 200:
                 kpi_response = response_kpi.json()
@@ -645,18 +651,13 @@ def steps(query, context, date):
         except Exception as e:
             print(f"An error occurred: {e}")
 
-        final_response = response_creation(query, kpi_response)
+        final_response = response_creation(query, kpi_response,response_3.get("KPI_name"))
     
     return final_response
-
 
 current_date = datetime.now().strftime("%Y-%m-%d")
 # qui va gestita la lettura dinamica kb e la creazione degli embeddings
 embeddings, _ = faiss_generation()
-
-#! va messa la chiamta ogni x tempo e non per query
-# embeddings, _ = read_kb()
-
 
 app = Flask(__name__)
 
@@ -687,12 +688,5 @@ def user_query():
         logging.error("An error occurred: ", exc_info=True,stack_info=True)
         return jsonify({"error": str(e)}), 500
 
-
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=False)
-
-
-
-
-
-
