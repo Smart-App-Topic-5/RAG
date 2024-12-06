@@ -29,7 +29,7 @@ import time
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-KB_PATH = "/app/Milestone2/kb.json"
+KB_PATH = "/app/Milestone3/kb.json"
 
 model = ChatOpenAI(
     base_url='http://ollama:11434/v1',  # Nome del servizio Docker
@@ -112,9 +112,9 @@ action_query_prompt = ChatPromptTemplate.from_template(
         - Provide both `start_range` and `end_range` fields in YYYY-MM-DD format.
     - For an Aggregation Period:
         - Provide `start_range` and `end_range` fields in YYYY-MM-DD format.
-        - Additionally, include the `aggregation` field (e.g., 'monthly', 'weekly', or 'daily').
+        - Additionally, include the `aggregation` field (e.g., 'month' or 'week').
     - 'operation': Specify the operation mentioned (e.g., 'sum,' 'avg,' 'max,' 'min'). If none, set this field to 'null'.
-    - 'KPI_name': Identify the key performance indicator mentioned. If none, set this field to 'null'.
+    - 'KPI_name': Identify the key performance indicator mentioned.
     - 'machine_name': Determine the machine referred to in the query. 
 
     Return the extracted information in a structured format (json).
@@ -251,15 +251,16 @@ chain6 = (
     | StrOutputParser()  
 )
 
+# FUNCTION TO ELABORATE THE LLM RESPONSE IN A JSON FILE 
 def build_graph_from_json(json_file_path):
-    # Crea un grafo vuoto
+    # Create an empty graph
     G = nx.DiGraph()
 
-    # Leggi il file JSON
+    # Read the JSON file
     with open(json_file_path, 'r') as f:
         data = json.load(f)
 
-    # Aggiungi i nodi macchina
+    # Add the machine nodes
     for machine in data.get("machines", []):
         G.add_node(
             machine["id"],
@@ -270,7 +271,7 @@ def build_graph_from_json(json_file_path):
             machine_type=machine["machineType"]
         )
 
-    # Aggiungi i nodi KPI
+    # Add the KPI nodes
     for kpi in data.get("kpis", []):
         G.add_node(
             kpi["nameID"],
@@ -282,7 +283,7 @@ def build_graph_from_json(json_file_path):
             formula=kpi.get("formula")
         )
 
-    # Aggiungi le relazioni
+    # Add relations
     for rel in data.get("relation", []):
         G.add_edge(
             rel["machineID"],
@@ -293,10 +294,10 @@ def build_graph_from_json(json_file_path):
     return G
 
 def describe_networkx_graph(G):
-    # Dizionario per descrizioni
+    # Dictionary to contain the description of the nodes
     descriptions = {}
     
-    # Descrivi i nodi delle macchine
+    # Machine nodes description
     machine_nodes = [node for node, data in G.nodes(data=True) if data.get("node_type") == "Machine"]
 
     for node in machine_nodes:
@@ -311,7 +312,7 @@ def describe_networkx_graph(G):
         kpi_names = [G.nodes[source].get('name', '') for source in source_nodes]
         concatenated_kpi_names = ", ".join(kpi_names)
         
-        # Genera descrizione per la macchina
+        # Machine description
         description = f"It is a {machine_type} machine located in {factory} on production line {production_line}."
         
         if kpi_names:
@@ -321,7 +322,7 @@ def describe_networkx_graph(G):
 
         descriptions[machine_name] = description
     
-    # Descrivi i nodi dei KPI
+    # KPI nodes description
     kpi_nodes = [node for node, data in G.nodes(data=True) if "Base KPI" in data.get("node_type", "") or "Derived KPI" in data.get("node_type", "")]
     
     for node in kpi_nodes:
@@ -350,7 +351,7 @@ def periodic_read_kb():
         time.sleep(3600)  
         print("completed reading kb")
 
-# Avvia il thread
+# Start the thread
 thread = threading.Thread(target=periodic_read_kb, daemon=True)
 thread.start()
 
@@ -363,7 +364,6 @@ def read_kb():
         if response.status_code == 200:
             response_data = response.json()
             
-
             try:
                 with open(KB_PATH, "r") as file:
                     local_data = json.load(file)
@@ -387,6 +387,7 @@ def read_kb():
         print(f"An error occurred: {e}")
 
 
+# RETRIEVAL
 def faiss_generation():
     G = build_graph_from_json(KB_PATH)
     generated_descriptions = describe_networkx_graph(G)
@@ -395,10 +396,7 @@ def faiss_generation():
     for node, desc in generated_descriptions.items():
         print(f"{node}: {desc}")
         descriptions.append({node: desc})
-
-
-    # ## Retrieval
-
+        
     # Convert the descriptions in a format suitable for retrieval through Langchain.
 
     # In[7]:
@@ -431,7 +429,7 @@ def faiss_generation():
     vector_store = FAISS.from_documents(documents, embedding_model)
 
     # Salva il vector store
-    vector_store.save_local("/app/Milestone2/vector_store")
+    vector_store.save_local("/app/Milestone3/vector_store")
 
     return embeddings, vector_store
 
@@ -461,23 +459,19 @@ def extract_json_from_llm_response(response):
                 result[key] = value
                 break
     
-    #dalla kb dato un machine_name prendi il suo id dal file kb_path
+    # Take the Machine ID from the KB 
     with open(KB_PATH, "r") as file:
         kb_data = json.load(file)
-    
     machine_id = None
-    #prendi l'id
     for machine in kb_data.get("machines", []):
         if machine["name"] == result["machine_name"]:
             machine_id = machine["id"]
             break
     
-    if result["end_range"] is None:
-        result["end_range"] = result["start_range"]
+    result["end_range"] = result.get("end_range", result["start_range"])
+    result["aggregation"] = result.get("aggregation", "day")
+    result["operation"] = result.get("operation", "sum")
     
-    if result["aggregation"] is None:
-        result["aggregation"] = "daily"
-
     result["machine_id"] = machine_id
     
     return result
@@ -656,7 +650,6 @@ def steps(query, context, date):
     return final_response
 
 current_date = datetime.now().strftime("%Y-%m-%d")
-# qui va gestita la lettura dinamica kb e la creazione degli embeddings
 embeddings, _ = faiss_generation()
 
 app = Flask(__name__)
@@ -665,10 +658,10 @@ app = Flask(__name__)
 def user_query():
     try:
 
-        # Recupero del corpo della richiesta JSON
+        # Get the JSON body request
         data = request.get_json()
 
-        # Validazione del corpo della richiesta
+        # Request validation
         if 'query' not in data:
             return jsonify({"error": "Query parameter is required"}), 400
 
@@ -684,9 +677,10 @@ def user_query():
         return jsonify(steps(query, context, current_date)), 200
 
     except Exception as e:
-        #stampa lo stack dell'errore
+        # Print the error
         logging.error("An error occurred: ", exc_info=True,stack_info=True)
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=False)
+# %%
