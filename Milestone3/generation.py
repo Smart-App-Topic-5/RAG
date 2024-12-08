@@ -29,6 +29,7 @@ import time
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
+TOKEN = "test_token"
 KB_PATH = "/app/Milestone3/kb.json"
 
 model = ChatOpenAI(
@@ -359,7 +360,10 @@ def read_kb():
     url = "https://api-layer/machineXKPI"
 
     try:
-        response = requests.get(url)
+        headers_to_send = {
+            "Authorization":"Bearer "+TOKEN
+        }
+        response = requests.get(url,verify=False, headers=headers_to_send)
         
         if response.status_code == 200:
             response_data = response.json()
@@ -630,12 +634,13 @@ def steps(query, context, date):
 
         try:
             headers_to_send={
+                "Authorization":"Bearer "+TOKEN,
                 "aggregationInterval": response_3.get("aggregation"),
                 "aggregationOP": response_3.get("operation"),
                 "startDate": response_3.get("start_range"),
                 "endDate": response_3.get("end_range")
             }
-            response_kpi = requests.post(kpi_url,headers=headers_to_send)
+            response_kpi = requests.get(kpi_url,headers=headers_to_send,verify=False)
             
             if response_kpi.status_code == 200:
                 kpi_response = response_kpi.json()
