@@ -5,7 +5,7 @@ FROM python:3.9-slim
 WORKDIR /app
 
 # Copia solo il file dei requisiti per sfruttare la cache Docker
-COPY Milestone2/Requirements.txt .
+COPY Milestone3/Requirements.txt .
 
 # Installa le dipendenze di sistema necessarie
 RUN apt-get update && apt-get install -y \
