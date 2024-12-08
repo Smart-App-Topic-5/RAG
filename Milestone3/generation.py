@@ -29,17 +29,20 @@ import time
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-TOKEN = "test_token"
-KB_PATH = "/app/Milestone3/kb.json"
+TOKEN = "test_token" # Token to access the API
+KB_PATH = "/app/Milestone3/kb.json" # Path to the KB file
 
+# LLM MODEL 
 model = ChatOpenAI(
-    base_url='http://ollama:11434/v1',  # Nome del servizio Docker
+    base_url='http://ollama:11434/v1',
     temperature = 0, 
     api_key = 'not-needed',
     model_name = 'mistral'
 )
 
-# PROMPTS 
+# PROMPTS
+# Different prompts for different types of queries
+# Each prompt is designed to guide the evaluator to provide the necessary information or answer based on the query type. 
 enough_info_prompt = ChatPromptTemplate.from_template(
     """
     You are an evaluator. Your job is not to answer the query. Your task is to determine if historical data, which consists only of previously recorded measurements of specific KPIs provided in the context, is needed to answer the query.
@@ -163,16 +166,16 @@ report_prompt = ChatPromptTemplate.from_template(
     1. Title: Create a clear and specific title based on the query.
 
     2. Key Performance Metrics:
-       - Identify the highest and lowest production rates, including the dates.
-       - Highlight the range of values (difference between highest and lowest).
+        - Identify the highest and lowest production rates, including the dates.
+        - Highlight the range of values (difference between highest and lowest).
 
     3. Overall Trends:
-       - Summarize key patterns or trends over time (e.g., increases, decreases, consistency).
+        - Summarize key patterns or trends over time (e.g., increases, decreases, consistency).
        - Highlight any periods of significant change.
 
     4. Observations:
-       - Point out any anomalies or outliers, if present.
-       - Provide a general evaluation of the performance (e.g., stable, improving, declining).
+        - Point out any anomalies or outliers, if present.
+        - Provide a general evaluation of the performance (e.g., stable, improving, declining).
 
     Data: {data}.
     Unit of measurement: {unit}.
@@ -189,6 +192,8 @@ report_prompt = ChatPromptTemplate.from_template(
 
 
 # PIPELINES
+# Define the Langchain pipeline for processing the queries and generating responses
+# The pipeline consists of a series of steps that process the input data and generate the final response.
 chain1 = (
     {
         'context': RunnablePassthrough(), 
@@ -220,7 +225,7 @@ chain3 = (
     | StrOutputParser()  
 )
 
-# Different chains 
+
 chain4 = (
     {
         'query': RunnablePassthrough(), 
@@ -252,232 +257,333 @@ chain6 = (
     | StrOutputParser()  
 )
 
-# FUNCTION TO ELABORATE THE LLM RESPONSE IN A JSON FILE 
+
 def build_graph_from_json(json_file_path):
-    # Create an empty graph
+    '''
+    This function builds a directed graph from a JSON file.
+    The graph contains nodes for machines and KPIs, and edges representing the relationships
+    where machines monitor specific KPIs.
+
+    Parameters:
+    - json_file_path (str): Path to the JSON file containing the graph data.
+
+    Returns:
+    - G (networkx.DiGraph): A directed graph with machine and KPI nodes and their relationships.
+    '''
+
+    # Create an empty directed graph using NetworkX
     G = nx.DiGraph()
 
-    # Read the JSON file
-    with open(json_file_path, 'r') as f:
-        data = json.load(f)
+    # Open and read the JSON file
+    with open(json_file_path, 'r') as f:  # Open the file in read mode
+        data = json.load(f)  # Load the JSON content into the 'data' dictionary
 
-    # Add the machine nodes
-    for machine in data.get("machines", []):
-        G.add_node(
-            machine["id"],
-            node_type="Machine",
-            name=machine["name"],
-            production_line=machine["productionLine"],
-            factory=machine["factory"],
-            machine_type=machine["machineType"]
+    # Add the machine nodes to the graph
+    for machine in data.get("machines", []):  # Iterate through the "machines" list in the JSON data
+        G.add_node(  # Add a node for each machine with its attributes
+            machine["id"],  # Node ID is set as the machine's ID
+            node_type="Machine",  # Node type attribute to differentiate it as a machine
+            name=machine["name"],  # Name of the machine
+            production_line=machine["productionLine"],  # Production line the machine belongs to
+            factory=machine["factory"],  # Factory to which the machine belongs
+            machine_type=machine["machineType"]  # Type of the machine
         )
 
-    # Add the KPI nodes
-    for kpi in data.get("kpis", []):
-        G.add_node(
-            kpi["nameID"],
-            node_type="Base KPI" if kpi.get("formula") is None else "Derived KPI",
-            name=kpi["description"],
-            category=kpi["category"],
-            unit=kpi["unit"],
-            relation_number=kpi["relationNumber"],
-            formula=kpi.get("formula")
+    # Add the KPI nodes to the graph
+    for kpi in data.get("kpis", []):  # Iterate through the "kpis" list in the JSON data
+        G.add_node(  # Add a node for each KPI with its attributes
+            kpi["nameID"],  # Node ID is set as the KPI's nameID
+            node_type="Base KPI" if kpi.get("formula") is None else "Derived KPI",  
+            # Determine if KPI is 'Base KPI' (no formula) or 'Derived KPI' (has a formula)
+            name=kpi["description"],  # Description of the KPI
+            category=kpi["category"],  # Category of the KPI
+            unit=kpi["unit"],  # Measurement unit of the KPI
+            relation_number=kpi["relationNumber"],  # Relation number (a specific attribute)
+            formula=kpi.get("formula")  # Formula (optional; None if not provided)
         )
 
-    # Add relations
-    for rel in data.get("relation", []):
-        G.add_edge(
-            rel["machineID"],
-            rel["kpiID"],
-            relationship="monitors"
+    # Add relations (edges) between machines and KPIs
+    for rel in data.get("relation", []):  # Iterate through the "relation" list in the JSON data
+        G.add_edge(  # Add a directed edge between machine and KPI
+            rel["machineID"],  # Source node: machineID
+            rel["kpiID"],  # Target node: kpiID
+            relationship="monitors"  # Edge attribute to describe the relationship
         )
 
+    # Return the constructed graph
     return G
 
 def describe_networkx_graph(G):
+    '''
+    This function generates a description of all nodes in a NetworkX graph.
+    Nodes are categorized into machines and KPIs, and detailed descriptions are provided
+    based on their attributes and relationships.
+
+    Parameters:
+    - G (networkx.Graph): A NetworkX graph containing nodes and edges with attributes.
+
+    Returns:
+    - descriptions (dict): A dictionary where keys are node names, and values are their descriptions.
+    '''
+
     # Dictionary to contain the description of the nodes
     descriptions = {}
-    
+
     # Machine nodes description
     machine_nodes = [node for node, data in G.nodes(data=True) if data.get("node_type") == "Machine"]
+    # Extract all nodes where the node_type is "Machine"
 
-    for node in machine_nodes:
-        data = G.nodes[node]
-        machine_name = data.get("name", "unknown name")
-        machine_type = data.get("machine_type", "Unknown type")
-        production_line = data.get("production_line", "unknown line")
-        factory = data.get("factory", "unknown factory")
+    for node in machine_nodes:  # Iterate over all machine nodes
+        data = G.nodes[node]  # Retrieve node attributes
+        machine_name = data.get("name", "unknown name")  # Get machine name (default: 'unknown name')
+        machine_type = data.get("machine_type", "Unknown type")  # Get machine type
+        production_line = data.get("production_line", "unknown line")  # Get production line info
+        factory = data.get("factory", "unknown factory")  # Get factory name
 
-        incoming_edges = G.in_edges(node)
-        source_nodes = [edge[0] for edge in incoming_edges]
-        kpi_names = [G.nodes[source].get('name', '') for source in source_nodes]
-        concatenated_kpi_names = ", ".join(kpi_names)
-        
-        # Machine description
+        # Find incoming edges to the machine node (KPIs that this machine monitors)
+        incoming_edges = G.in_edges(node)  # Retrieve incoming edges for the node
+        source_nodes = [edge[0] for edge in incoming_edges]  # Extract source nodes of these edges
+        kpi_names = [G.nodes[source].get('name', '') for source in source_nodes]  
+        # Retrieve 'name' attribute of the source nodes (KPIs)
+        concatenated_kpi_names = ", ".join(kpi_names)  # Concatenate KPI names into a single string
+
+        # Build the machine description
         description = f"It is a {machine_type} machine located in {factory} on production line {production_line}."
-        
+        # Include monitored KPIs, if any
         if kpi_names:
             description += f" It monitors the following KPIs: {concatenated_kpi_names}."
         else:
             description += " It has no KPIs associated with it."
 
+        # Add the description to the dictionary with the machine name as the key
         descriptions[machine_name] = description
-    
+
     # KPI nodes description
     kpi_nodes = [node for node, data in G.nodes(data=True) if "Base KPI" in data.get("node_type", "") or "Derived KPI" in data.get("node_type", "")]
-    
-    for node in kpi_nodes:
-        data = G.nodes[node]
-        kpi_name = data.get('name', 'unknown name')
-        category = data.get('category', 'unknown category')
-        has_formula = "Derived KPI" in data.get("node_type", "")
-        formula = data.get('formula', 'no formula') if has_formula else 'no formula'
-        unit = data.get('unit', 'unknown unit')
-        
+    # Extract nodes where the node_type contains 'Base KPI' or 'Derived KPI'
+
+    for node in kpi_nodes:  # Iterate over all KPI nodes
+        data = G.nodes[node]  # Retrieve node attributes
+        kpi_name = data.get('name', 'unknown name')  # Get KPI name (default: 'unknown name')
+        category = data.get('category', 'unknown category')  # Get KPI category
+        has_formula = "Derived KPI" in data.get("node_type", "")  # Check if the KPI is derived (has a formula)
+        formula = data.get('formula', 'no formula') if has_formula else 'no formula'  
+        # Retrieve formula if the KPI is derived, otherwise set as 'no formula'
+        unit = data.get('unit', 'unknown unit')  # Get the measurement unit
+
+        # Build the KPI description
         description = f"It is a KPI in the {category} category. "
         if has_formula:
             description += f"It is a derived KPI and uses the formula: {formula}. "
         else:
             description += "It is a base KPI with no formula."
-        
+
         description += f"The unit of measurement is {unit}."
+
+        # Add the description to the dictionary with the KPI name as the key
         descriptions[kpi_name] = description
 
+    # Return the dictionary containing all node descriptions
     return descriptions
 
 def periodic_read_kb():
+    '''
+    This function runs in an infinite loop, periodically calling the `read_kb` function
+    to fetch and update the knowledge base every 3600 seconds (1 hour).
+
+    It is designed to be run as a daemon thread to ensure non-blocking execution in the main program.
+    '''
     while True:
-        print("Reading kb...")
-        #read_kb()  #! Read the KB
-        time.sleep(3600)  
-        print("completed reading kb")
+        print("Reading kb...")  # Log message indicating the KB reading process has started
+        # read_kb()  # Uncomment this line to call the KB reading function if needed
+        time.sleep(3600)  # Pause execution for 1 hour (3600 seconds)
+        print("completed reading kb")  # Log message indicating the KB reading process has completed
 
 # Start the thread
 thread = threading.Thread(target=periodic_read_kb, daemon=True)
-thread.start()
+# Create a daemon thread that runs the `periodic_read_kb` function.
+# The `daemon=True` ensures the thread exits when the main program ends.
+
+thread.start()  # Start the thread execution
 
 def read_kb():
-    url = "https://api-layer/machineXKPI"
+    '''
+    This function fetches the knowledge base (KB) from a remote API and updates
+    the local KB file if any changes are detected.
+
+    - It compares the API response with the existing local KB file.
+    - If the content differs, it updates the file and triggers further processing.
+
+    Returns:
+    - The result of the `faiss_generation` function if updates occur.
+    - None if no update is needed or an error occurs.
+    '''
+    url = "https://api-layer/machineXKPI"  # Endpoint URL for fetching the KB
 
     try:
+        # Prepare headers with an authorization token
         headers_to_send = {
-            "Authorization":"Bearer "+TOKEN
+            "Authorization": "Bearer "+TOKEN  # Authorization header for secure access
         }
-        response = requests.get(url,verify=False, headers=headers_to_send)
-        
-        if response.status_code == 200:
-            response_data = response.json()
+        response = requests.get(url, verify=False, headers=headers_to_send)  
+        # Make an HTTP GET request to fetch data from the KB API
+        # verify=False bypasses SSL verification (use with caution)
+
+        if response.status_code == 200:  # Check if the request was successful
+            response_data = response.json()  # Parse the response as JSON
             
             try:
-                with open(KB_PATH, "r") as file:
-                    local_data = json.load(file)
-            except FileNotFoundError:
-                local_data = None  
+                with open(KB_PATH, "r") as file:  # Attempt to open the local KB file
+                    local_data = json.load(file)  # Load existing KB data from the file
+            except FileNotFoundError:  # Handle case where local file does not exist
+                local_data = None  # Set local_data to None if file is not found
             
+            # Compare the fetched data with local data
             if response_data != local_data:
                 print("Content differs. Updating local file and processing.")
-                
+                # If content is different, update the local file
                 with open(KB_PATH, "w") as file:
-                    json.dump(response_data, file, indent=4)
+                    json.dump(response_data, file, indent=4)  # Write updated data to the file
                 
-                return faiss_generation()
+                return faiss_generation()  # Trigger further processing (e.g., FAISS index generation)
             else:
-                print("Content is identical. No update needed.")
+                print("Content is identical. No update needed.")  # Log message if no update is required
         else:
-            print(f"Error: Received status code {response.status_code}")
-            print(response.text)
+            print(f"Error: Received status code {response.status_code}")  # Log the error status code
+            print(response.text)  # Print the error response text for debugging
 
-    except Exception as e:
-        print(f"An error occurred: {e}")
-
+    except Exception as e:  # Handle any exceptions that occur during the process
+        print(f"An error occurred: {e}")  # Log the exception details
 
 # RETRIEVAL
 def faiss_generation():
-    G = build_graph_from_json(KB_PATH)
-    generated_descriptions = describe_networkx_graph(G)
-    descriptions = []
+    '''
+    This function generates a FAISS vector store from a knowledge base (KB) JSON file.
+    It creates a graph, describes its nodes, converts these descriptions into embeddings,
+    and builds a FAISS index to enable efficient retrieval.
 
+    Steps:
+    1. Build a graph from the KB JSON file.
+    2. Generate natural language descriptions for nodes in the graph.
+    3. Embed the descriptions using HuggingFace's Sentence-Transformers model.
+    4. Create a FAISS vector store with these embeddings for retrieval.
+    5. Save the FAISS vector store locally.
+
+    Returns:
+    - embeddings (list): List of embeddings generated for node descriptions.
+    - vector_store (FAISS): The FAISS vector store object.
+    '''
+    # Step 1: Build the graph from the local knowledge base (KB)
+    G = build_graph_from_json(KB_PATH)  # Build a graph from the KB JSON file
+    generated_descriptions = describe_networkx_graph(G)  # Generate descriptions for graph nodes
+    descriptions = []  # Initialize an empty list for formatted descriptions
+
+    # Iterate through the generated descriptions and print them
     for node, desc in generated_descriptions.items():
-        print(f"{node}: {desc}")
-        descriptions.append({node: desc})
-        
-    # Convert the descriptions in a format suitable for retrieval through Langchain.
+        print(f"{node}: {desc}")  # Log the node name and description
+        descriptions.append({node: desc})  # Append node-description pair to the list
+    
+    # Step 2: Convert node descriptions into Langchain Document objects
+    documents = []  # Initialize an empty list for Document objects
 
-    # In[7]:
-
-
-    # Step 1: Convert node descriptions into Langchain Document objects
-    documents = []
-
-    # Iterate over the list of dictionaries in `descriptions`
-    for item in descriptions:
-        for node, desc in item.items():  # Extract the key-value pair from each dictionary
-            # Include the node name in the page content to make it explicit
+    for item in descriptions:  # Iterate through node-description pairs
+        for node, desc in item.items():  # Extract node and description
+            # Combine node name and description into a single string
             document_text = f"{node}: {desc}"
+            # Create a Langchain Document object with metadata
             documents.append(Document(page_content=document_text, metadata={"node": node}))
 
-    # Step 2: Generate embeddings for each node description using HuggingFace
+    # Step 3: Generate embeddings for each node description using HuggingFace
     embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+    # Load the HuggingFace embedding model for generating embeddings
+
     embeddings = [embedding_model.embed_query(doc.page_content) for doc in documents]
+    # Generate embeddings for each document's content and store them in a list
 
-    # Step 3: Create FAISS index and add the embeddings
-    dimension = len(embeddings[0])
-    faiss_index = faiss.IndexFlatL2(dimension)
-    faiss_index.add(np.array(embeddings))
+    # Step 4: Create a FAISS index and add the embeddings
+    dimension = len(embeddings[0])  # Determine the dimensionality of the embeddings
+    faiss_index = faiss.IndexFlatL2(dimension)  # Create a FAISS index with L2 (Euclidean) distance
+    faiss_index.add(np.array(embeddings))  # Add embeddings to the FAISS index
 
-    # Step 4: Create `index_to_docstore_id` and a `docstore`
-    index_to_docstore_id = {i: str(i) for i in range(len(documents))}
-    docstore = InMemoryDocstore(({str(i): doc for i, doc in enumerate(documents)}))
+    # Step 5: Create `index_to_docstore_id` and an in-memory docstore
+    index_to_docstore_id = {i: str(i) for i in range(len(documents))}  # Map indices to document IDs
+    docstore = InMemoryDocstore({str(i): doc for i, doc in enumerate(documents)})  
+    # Create an in-memory docstore to hold the documents
 
-    # Step 5: Create FAISS vector store with HuggingFace embeddings and the node documents
+    # Step 6: Create FAISS vector store with HuggingFace embeddings and the node documents
     vector_store = FAISS.from_documents(documents, embedding_model)
+    # Build a FAISS vector store by embedding documents and linking them with their FAISS index
 
-    # Salva il vector store
+    # Step 7: Save the FAISS vector store locally
     vector_store.save_local("/app/Milestone3/vector_store")
+    # Save the FAISS vector store for persistent storage
 
-    return embeddings, vector_store
+    return embeddings, vector_store  # Return the embeddings and the FAISS vector store
 
-# FORMAT VALUES TO CONTACT THE KPI ENGINE
+
 def extract_json_from_llm_response(response):
+    '''
+    This function extracts relevant JSON data from an LLM response and formats it into a structured dictionary. 
+    It also retrieves the corresponding machine ID from the knowledge base (KB) based on the machine name.
+
+    Parameters:
+    - response (str): The raw response from the LLM, which contains JSON-like content.
+
+    Returns:
+    - result (dict): A dictionary containing extracted and formatted values for KPI queries, 
+                    including the machine ID and default values for missing fields.
+    '''
+
+    # Step 1: Extract JSON-like content from the response using regex
     matches = re.findall(r'\{.*?\}', response, re.DOTALL)
-    
-    if not matches:
+    # Use regex to find content wrapped in curly braces `{}` across multiple lines (DOTALL allows multiline matches)
+
+    if not matches:  # If no matches are found, return an empty dictionary
         return {}
-    
-    content = matches[0]
-    
-    lines = content.splitlines()
-    cleaned_lines = []
+
+    content = matches[0]  # Take the first match as the JSON content
+
+    # Step 2: Clean up and process the content line by line
+    lines = content.splitlines()  # Split the content into individual lines
+    cleaned_lines = []  # Initialize an empty list for cleaned lines
     for line in lines:
-        cleaned_line = re.sub(r',.*', '', line).strip()
-        if cleaned_line:
+        cleaned_line = re.sub(r',.*', '', line).strip()  # Remove trailing content after commas and strip whitespace
+        if cleaned_line:  # Add non-empty lines to the cleaned list
             cleaned_lines.append(cleaned_line)
-    
+
+    # Step 3: Initialize a dictionary with desired keys and default `None` values
     desired_keys = ["KPI_name", "machine_name", "start_range", "end_range", "aggregation", "operation"]
-    result = {key: None for key in desired_keys}
-    
-    for line in cleaned_lines:
-        for key in desired_keys:
-            if line.startswith(f'"{key}"'):
-                value = line.split(':', 1)[-1].strip().strip('"')
-                result[key] = value
-                break
-    
-    # Take the Machine ID from the KB 
-    with open(KB_PATH, "r") as file:
-        kb_data = json.load(file)
-    machine_id = None
-    for machine in kb_data.get("machines", []):
-        if machine["name"] == result["machine_name"]:
-            machine_id = machine["id"]
-            break
-    
-    result["end_range"] = result.get("end_range", result["start_range"])
-    result["aggregation"] = result.get("aggregation", "day")
-    result["operation"] = result.get("operation", "sum")
-    
+    result = {key: None for key in desired_keys}  # Initialize the result dictionary
+
+    # Step 4: Extract key-value pairs from cleaned lines
+    for line in cleaned_lines:  # Iterate through cleaned lines
+        for key in desired_keys:  # Check for desired keys
+            if line.startswith(f'"{key}"'):  # If the line starts with a specific key
+                value = line.split(':', 1)[-1].strip().strip('"')  # Extract the value after ':' and clean it
+                result[key] = value  # Store the value in the result dictionary
+                break  # Break once a key is matched
+
+
+
+    # Step 5: Retrieve the machine ID from the knowledge base (KB)
+    machine_name = result["machine_name"] # Extract the machine name from the result
+    machine_id = None # Initialize the machine ID as None
+    with open(KB_PATH, "r") as file: # Open the KB file in read mode
+        kb_data = json.load(file) # Load the KB data from the file
+        for machine in kb_data["machines"]: # Iterate through the machines in the KB
+            if machine["name"] == machine_name: # If the machine name matches the query
+                machine_id = machine["id"] # Retrieve the machine ID
+                break # Break the loop once the ID is found
+
+    # Step 6: Set default values for missing fields
+    result["end_range"] = result.get("end_range", result["start_range"])  # Default end_range to start_range
+    result["aggregation"] = result.get("aggregation", "day")  # Default aggregation to "day"
+    result["operation"] = result.get("operation", "sum")  # Default operation to "sum"
+
+    # Step 7: Add the retrieved machine ID to the result
     result["machine_id"] = machine_id
-    
+
+    # Return the formatted result dictionary
     return result
 
 # FORMAT REPORT TO CONTACT GUI
@@ -491,42 +597,58 @@ def parse_report_to_dict(report_text):
     Returns:
         dict: A dictionary containing the title and sections of the report.
     """
+
+    # Initialize a dictionary to hold the structured report data
     report_data = {
-        "title": "",
-        "sections": {
+        "title": "",  # Placeholder for the report title
+        "sections": {  # Predefined sections for the report
             "Key Performance Metrics": [],
             "Overall Trends": [],
             "Observations": []
         }
     }
-    
+
+    # Split the report text into individual lines, stripping whitespace and line breaks
     lines = report_text.strip().split("\n")
     
+    # Variables to track the current section being processed and if the title has been assigned
     current_section = None
     is_title_assigned = False
-    
-    # Parse the text
+
+    # Step 1: Parse the text line by line
     for line in lines:
-        line = line.strip()
-        if line.startswith("**Title:**"):  # Handle titles with "Title:"
-            report_data["title"] = line.replace("**Title:**", "").strip()
-            is_title_assigned = True
-        elif line.startswith("**") and line.endswith("**"):  # Handle other headers
-            section_title = line.strip("*").strip(":")  # Remove asterisks and colons
-            if section_title in report_data["sections"]:  # If it's a known section
-                current_section = section_title
-            elif not is_title_assigned:  # Assign the first unmatched header as the title
+        line = line.strip()  # Clean up the current line
+
+        # Step 2: Detect the title section
+        if line.startswith("**Title:**"):  # If the line starts with "Title:"
+            report_data["title"] = line.replace("**Title:**", "").strip()  # Extract the title text
+            is_title_assigned = True  # Mark the title as assigned
+
+        # Step 3: Detect section headers (lines surrounded by double asterisks **)
+        elif line.startswith("**") and line.endswith("**"):
+            section_title = line.strip("*").strip(":")  # Remove asterisks and colons to clean the header
+
+            # Check if the section header matches a predefined section
+            if section_title in report_data["sections"]:
+                current_section = section_title  # Update the current section
+            elif not is_title_assigned:  # If no title has been assigned, treat the first header as the title
                 report_data["title"] = section_title
                 is_title_assigned = True
-            else:
+            else:  # Raise an error if an unknown section is encountered
                 raise ValueError(f"Unknown section or title: {section_title}")
-        elif line.startswith("-"):  # Add content to the current section
-            if current_section:
+
+        # Step 4: Handle content lines (lines starting with "-")
+        elif line.startswith("-"):
+            if current_section:  # Ensure a section is currently active
+                # Add the cleaned line content to the current section
                 report_data["sections"][current_section].append(line.strip("- ").strip())
-    
+
+    # Step 5: Return the structured dictionary
     return report_data
 
+
 # FUNCTIONS TO DEFINE THE KIND OF CONTACT WITH GUI 
+
 def generate_string(textual_response):
     """
     Generates a structured dictionary for a text response.
@@ -535,15 +657,17 @@ def generate_string(textual_response):
         textual_response (str): The textual message or response.
 
     Returns:
-        dict: A structured dictionary containing the text response and placeholders for optional dashboard or report data.
+        dict: A structured dictionary containing the text response and placeholders 
+            for optional dashboard or report data.
     """
     data_6 = {
-        "type": "text",  # Specifies the type as a text response
-        "text": textual_response,  # The actual text response
-        "dashboard": None, 
-        "report": None,  
+        "type": "text",          # Specifies the type as a text response
+        "text": textual_response,  # The actual text response to display
+        "dashboard": None,       # Placeholder for dashboard data (not used here)
+        "report": None,          # Placeholder for report data (not used here)
     }
     return data_6
+
 
 def generate_report(report):
     """
@@ -553,106 +677,166 @@ def generate_report(report):
         report (dict): The report content to include, structured as a dictionary.
 
     Returns:
-        dict: A structured dictionary containing the report data and placeholders for optional text or dashboard elements.
+        dict: A structured dictionary containing the report data and placeholders 
+            for optional text or dashboard elements.
     """
     data_6 = {
-        "type": "report",  # Specifies the type as a report
-        "text": None,  
-        "dashboard": None,  
-        "report": report,  # The actual report content
+        "type": "report",   # Specifies the type as a report
+        "text": None,       # Placeholder for text response (not used here)
+        "dashboard": None,  # Placeholder for dashboard data (not used here)
+        "report": report,   # The actual report content to include
     }
     return data_6
+
 
 def generate_dashboard(values, intro_string, x_axis_name, y_axis_name):
     """
-    Generates a structured dashboard object.
+    Generates a structured dictionary for a dashboard visualization.
 
     Args:
-        values (list): List of values for the dashboard (e.g., data to display).
+        values (list): List of values for the dashboard (e.g., data points).
         intro_string (str): Introductory text for the dashboard (e.g., "Here is the weekly production rate for Machine_X").
-        x_axis_name (str): Name of the X-axis (e.g., "Values").
-        y_axis_name (str): Name of the Y-axis (e.g., KPI name).
+        x_axis_name (str): Name of the X-axis (e.g., "Date").
+        y_axis_name (str): Name of the Y-axis (e.g., KPI name or value type).
 
     Returns:
-        dict: A structured dictionary with the dashboard information.
+        dict: A structured dictionary containing the dashboard data, including axis labels, 
+            introductory text, and values to display.
     """
     data_6 = {
-        "type": "dashboard",
-        "text": intro_string,  # Introductory text for the dashboard
-        "x_axis_name": x_axis_name,  # Name of the X-axis
-        "y_axis_name": y_axis_name,  # Name of the Y-axis
-        "values": values,  # Data points for the dashboard (e.g., {"x": "date", "y": value} or {"start_date": "date", "end_date": "date", "value": value})
-        "report": None,
+        "type": "dashboard",      # Specifies the type as a dashboard
+        "text": intro_string,     # Introductory text for the dashboard
+        "x_axis_name": x_axis_name,  # Name of the X-axis (e.g., "Date")
+        "y_axis_name": y_axis_name,  # Name of the Y-axis (e.g., KPI name)
+        "values": values,         # Data points for the dashboard visualization
+        "report": None,           # Placeholder for report data (not used here)
     }
     return data_6
 
+
 # FUNCTION TO ELABORATE KPI ENGINE RESPONSE
 def response_creation(query, kpi_response, kpi_name):
-    if len(kpi_response["values"])==1:
-        kpi_value = kpi_response["value"]
-        unit = kpi_response["unit"]
+    """
+    Processes the response from the KPI engine and generates an appropriate structured response
+    based on the query and KPI values.
 
+    Args:
+        query (str): The query provided by the user.
+        kpi_response (dict): The response from the KPI engine containing KPI values and units.
+        kpi_name (str): The name of the KPI being processed.
+
+    Returns:
+        dict: A structured dictionary that represents a text response, a report, or a dashboard 
+            based on the KPI data and query context.
+    """
+
+    # Step 1: Handle case where only a single KPI value is returned
+    if len(kpi_response["values"]) == 1:  # Check if there is only one value in the response
+        kpi_value = kpi_response["value"]  # Extract the KPI value
+        unit = kpi_response["unit"]        # Extract the KPI unit
+
+        # Prepare input data for further processing
         input_data = {"value": kpi_value, "unit": unit, "query": query}
-        response_4 = chain4.invoke(input_data)
+        response_4 = chain4.invoke(input_data)  # Invoke chain4 to process the single KPI value
+
+        # Format the output as a structured text response
         response_4 = generate_string(response_4)
         return response_4
 
+    # Step 2: Handle case where multiple KPI values are returned
     else:
-        values = kpi_response["values"]
+        values = kpi_response["values"]  # Extract all KPI values from the response
 
-        if "report" in query.lower():
-            input_data = {'query': query, 'data': values}
-            report_text = chain6.invoke(input_data)
+        # Check if the query requests a "report"
+        if "report" in query.lower():  # If the query explicitly asks for a report
+            input_data = {'query': query, 'data': values}  # Prepare input data for chain6
+            report_text = chain6.invoke(input_data)  # Generate a textual report using chain6
+
+            # Parse the report text into a structured dictionary
             report = parse_report_to_dict(report_text)
+
+            # Format the output as a structured report
             response_6 = generate_report(report)
             return response_6
-        else:
-            input_data = {"query": query}
-            intro_string = chain5.invoke(input_data)
-            x_axis_name = kpi_name
-            response_5 = generate_dashboard(values, intro_string, x_axis_name, "Values")
 
+        # Handle case where a dashboard is needed
+        else:
+            input_data = {"query": query}  # Prepare input data for chain5
+            intro_string = chain5.invoke(input_data)  # Generate introductory text for the dashboard
+
+            x_axis_name = kpi_name  # Set the X-axis name to the KPI name
+            # Format the output as a structured dashboard response
+            response_5 = generate_dashboard(values, intro_string, x_axis_name, "Values")
             return response_5
+
 
 # FUNCTION TO CALL THE RAG PIPELINE
 def steps(query, context, date):
-    input_data = {"context": context, "query": query}
-    response_1 = chain1.invoke(input_data)
-    kpi_response = None
-    first_two_tokens = response_1.strip().split()[:1]
+    """
+    This function orchestrates the retrieval-augmented generation (RAG) pipeline. 
+    It determines whether historical data is needed, processes queries, fetches KPI data, 
+    and generates appropriate structured responses.
 
-    if " ".join(first_two_tokens) == "No,":
-        response_2 = chain2.invoke(input_data)
-        final_response = generate_string(response_2)    
+    Args:
+        query (str): The user query or question.
+        context (str): The context provided for processing the query.
+        date (str): The current date for reference.
+
+    Returns:
+        dict: A structured dictionary representing the final response, 
+            which can be a text, report, or dashboard.
+    """
+
+    # Step 1: Invoke chain1 to determine if historical data is needed
+    input_data = {"context": context, "query": query}  # Prepare input for chain1
+    response_1 = chain1.invoke(input_data)  # Invoke chain1 with the input data
+
+    kpi_response = None  # Initialize KPI response placeholder
+    first_two_tokens = response_1.strip().split()[:1]  # Extract the first token of the response
+
+    # Step 2: If chain1 says "No", proceed with chain2
+    if " ".join(first_two_tokens) == "No,":  # Check if chain1 indicates no historical data is needed
+        response_2 = chain2.invoke(input_data)  # Invoke chain2 for an alternative response
+        final_response = generate_string(response_2)  # Format the response as text
     else:
+        # Step 3: If chain1 says historical data is needed, invoke chain3 to extract query details
         input_data = {"context": context, "query": query, "current_date": date}
-        response_3 = chain3.invoke(input_data)
+        response_3 = chain3.invoke(input_data)  # Invoke chain3 to get structured query details
 
+        # Step 4: Extract query details (e.g., KPI name, machine ID, and date ranges)
         response_3 = extract_json_from_llm_response(response_3)
+
         #####! TOPIC KPI ENGINE
-        kpi_url = "https://api-layer/KPI/"+response_3.get("KPI_name")+"/"+response_3.get("machine_id")+"/values"
+        # Step 5: Prepare the KPI engine API request URL and headers
+        kpi_url = f"https://api-layer/KPI/{response_3.get('KPI_name')}/{response_3.get('machine_id')}/values"
 
         try:
-            headers_to_send={
-                "Authorization":"Bearer "+TOKEN,
-                "aggregationInterval": response_3.get("aggregation"),
-                "aggregationOP": response_3.get("operation"),
-                "startDate": response_3.get("start_range"),
-                "endDate": response_3.get("end_range")
+            headers_to_send = {
+                "Authorization": "Bearer "+TOKEN,  # Authorization header with Bearer token
+                "aggregationInterval": response_3.get("aggregation"),  # Aggregation interval (e.g., day, week)
+                "aggregationOP": response_3.get("operation"),          # Aggregation operation (e.g., sum, avg)
+                "startDate": response_3.get("start_range"),            # Start date for KPI values
+                "endDate": response_3.get("end_range")                 # End date for KPI values
             }
-            response_kpi = requests.get(kpi_url,headers=headers_to_send,verify=False)
-            
+
+            # Step 6: Make an HTTP GET request to the KPI engine API
+            response_kpi = requests.get(kpi_url, headers=headers_to_send, verify=False)
+
+            # Step 7: Check if the request was successful
             if response_kpi.status_code == 200:
-                kpi_response = response_kpi.json()
-                
+                kpi_response = response_kpi.json()  # Parse the KPI response as JSON
             else:
-                print("errore")
-        except Exception as e:
+                print("Error: KPI engine request failed.")  # Log an error if the status code is not 200
+
+        except Exception as e:  # Handle exceptions that occur during the API request
             print(f"An error occurred: {e}")
 
-        final_response = response_creation(query, kpi_response,response_3.get("KPI_name"))
-    
+        # Step 8: Create the final response using the KPI data
+        final_response = response_creation(query, kpi_response, response_3.get("KPI_name"))
+
+    # Step 9: Return the structured final response
     return final_response
+
 
 current_date = datetime.now().strftime("%Y-%m-%d")
 embeddings, _ = faiss_generation()
@@ -661,31 +845,66 @@ app = Flask(__name__)
 
 @app.route('/user-query', methods=['POST'])
 def user_query():
-    try:
+    """
+    Endpoint to handle user queries.
 
-        # Get the JSON body request
+    It processes a POST request with a JSON body containing a 'query' field. 
+    The query is processed using a FAISS vector store and retrieval pipeline 
+    to return the most relevant results processes by the LLM.
+
+    Returns:
+        JSON: A structured response based on the query, or an error message.
+    """
+    try:
+        # Step 1: Retrieve the JSON body from the request
         data = request.get_json()
 
-        # Request validation
+        # Step 2: Validate the JSON payload to ensure the 'query' parameter is provided
         if 'query' not in data:
             return jsonify({"error": "Query parameter is required"}), 400
+            # Return a 400 Bad Request error if 'query' is missing.
 
+        # Step 3: Extract the query from the request data
         query = data['query']
+
+        # Step 4: Load the FAISS vector store for retrieval
         vector_store = FAISS.load_local(
-            "/app/Milestone3/vector_store", HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2"), allow_dangerous_deserialization=True
+            "/app/Milestone3/vector_store",  # Path to the saved FAISS vector store
+            HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2"), 
+            # Use HuggingFace embeddings for text similarity
+            allow_dangerous_deserialization=True  # Allow loading potentially unsafe serialized data (use with caution)
         )
+
+        # Step 5: Convert the FAISS vector store into a retriever
         retriever = vector_store.as_retriever()
-        context_docs = retriever.invoke(query)
+
+        # Step 6: Retrieve relevant context documents based on the query
+        context_docs = retriever.invoke(query)  # Query the retriever for relevant documents
+
+        # Combine the retrieved documents' content into a single context string
         context = " ".join([doc.page_content for doc in context_docs])
 
-        
-        return jsonify(steps(query, context, current_date)), 200
+        # Step 7: Process the query using the pipeline defined in `steps` function
+        response = steps(query, context, current_date)
+
+        # Step 8: Return the final response as a JSON object with a 200 OK status
+        return jsonify(response), 200
 
     except Exception as e:
-        # Print the error
-        logging.error("An error occurred: ", exc_info=True,stack_info=True)
+        # Step 9: Log any unexpected errors with detailed information
+        logging.error("An error occurred: ", exc_info=True, stack_info=True)
+        # Return a 500 Internal Server Error response with the error message
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
+    # Run the Flask application on all available network interfaces (0.0.0.0)
+    # Port 5001 is used to host the API
+    # Debug mode is disabled for production use
     app.run(host='0.0.0.0', port=5001, debug=False)
-# %%
+
+
+
+
+
+
+

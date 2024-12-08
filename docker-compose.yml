@@ -7,13 +7,13 @@ services:
       dockerfile: Dockerfile
     container_name: RAG
     ports:
-      - "5001:5001"  # Espone la porta 5000 al tuo sistema host
+      - "5001:5001"  
     volumes:
-      - .:/app  # Sincronizza la directory corrente nel container
-    stdin_open: true  # Consente l'interazione con il container
-    tty: true  # Abilita un terminale virtuale
+      - .:/app  
+    stdin_open: true  
+    tty: true 
     depends_on:
-      - ollama  # Assicura che Ollama venga avviato prima di "app"
+      - ollama  
     environment:
       OLLAMA_HOST: http://ollama:11434
 
@@ -21,9 +21,9 @@ services:
     image: ollama/ollama
     container_name: ollama
     ports:
-      - "11434:11434"  # Espone la porta 11434 per Ollama
+      - "11434:11434"  
     volumes:
-      - ollama-models:/root/.ollama  # Persistenza per i modelli scaricati
+      - ollama-models:/root/.ollama  
     entrypoint: >
       sh -c "
       ollama serve &
@@ -38,4 +38,4 @@ services:
 
 
 volumes:
-  ollama-models:  # Volume per conservare i modelli scaricati
+  ollama-models:
