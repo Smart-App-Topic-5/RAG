@@ -667,7 +667,7 @@ def user_query():
 
         query = data['query']
         vector_store = FAISS.load_local(
-            "/app/Milestone2/vector_store", HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2"), allow_dangerous_deserialization=True
+            "/app/Milestone3/vector_store", HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2"), allow_dangerous_deserialization=True
         )
         retriever = vector_store.as_retriever()
         context_docs = retriever.invoke(query)

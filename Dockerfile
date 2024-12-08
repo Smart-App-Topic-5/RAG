@@ -29,4 +29,4 @@ COPY . .
 HEALTHCHECK --interval=30s CMD curl -f http://localhost:11434/v1 || exit 1
 
 # Specifica il comando di avvio
-CMD ["python", "Milestone2/generation.py"]
+CMD ["python", "Milestone3/generation.py"]
