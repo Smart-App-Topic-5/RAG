@@ -835,9 +835,6 @@ def steps(query, context, date):
 
         #####! TOPIC KPI ENGINE
         # Step 5: Prepare the KPI engine API request URL and headers
-        print("kpi_name: ", response_3.get("KPI_name"))
-        print("machine_id: ", response_3.get("machine_id"))
-
         kpi_url = f"https://api-layer/KPI/{response_3.get('KPI_name')}/{response_3.get('machine_id')}/values"
 
         try:
