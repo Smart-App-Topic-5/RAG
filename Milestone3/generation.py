@@ -97,12 +97,6 @@ action_query_prompt = ChatPromptTemplate.from_template(
         - "from July to August"
     - Note: A range always involves a start and an end date, covering all the days in between.
 
-    3. Aggregation Period:
-    - A period that indicates a repeating aggregation, usually associated with a specific frequency or regular interval, to group data. Examples include:
-        - "monthly between July and September" (meaning data grouped month by month)
-        - "weekly in the last month" (meaning data grouped week by week over the past month)
-    - Note: An aggregation period focuses on dividing the timeframe into repeated intervals (e.g., weekly, monthly) for aggregated analysis. Only classify it as an aggregation period if **explicit** mention of terms like "monthly", "weekly", or similar are found in the query.
-
     Step 2: Identify the Operation
     Check if the query mentions any of the following operations:
     - sum, avg, max, min.
@@ -111,12 +105,11 @@ action_query_prompt = ChatPromptTemplate.from_template(
     Step 3: Extract the Following Details:
     Extract and organize the information as described below:
     - For a Specific Date:
-        - Provide it in the `start_range` field in YYYY-MM-DD format.
+        - Provide it in the start_range field in YYYY-MM-DD format.
     - For a Date Range:
-        - Provide both `start_range` and `end_range` fields in YYYY-MM-DD format.
+        - Provide both start_range and end_range fields in YYYY-MM-DD format.
     - For an Aggregation Period:
-        - Provide `start_range` and `end_range` fields in YYYY-MM-DD format.
-        - Additionally, include the `aggregation` field (e.g., 'month' or 'week').
+        - Provide start_range and end_range fields in YYYY-MM-DD format.
     - 'operation': Specify the operation mentioned (e.g., 'sum,' 'avg,' 'max,' 'min'). If none, set this field to 'null'.
     - 'KPI_name': Identify the key performance indicator mentioned.
     - 'machine_name': Determine the machine referred to in the query. 
@@ -171,7 +164,7 @@ report_prompt = ChatPromptTemplate.from_template(
 
     3. Overall Trends:
         - Summarize key patterns or trends over time (e.g., increases, decreases, consistency).
-       - Highlight any periods of significant change.
+        - Highlight any periods of significant change.
 
     4. Observations:
         - Point out any anomalies or outliers, if present.
@@ -257,6 +250,37 @@ chain6 = (
     | StrOutputParser()  
 )
 
+
+def check_aggregation(input_string, start_date, end_date):
+    """
+    Checks if the input string contains the words 'daily', 'monthly', or 'weekly'
+    (case-insensitive) and returns the first match. If no match is found, returns None.
+
+    Args:
+    input_string (str): The input string to check.
+    start_date (str): The start date of the period to analyze.
+    end_date (str): The end date of the period to analyze.
+
+    Returns:
+    str or None: The matched time aggregation word ('daily', 'monthly', 'weekly'), 
+                'daily' if start_date equals end_date, or 'overall' otherwise.
+    """
+    # Convert the input string to lowercase for case-insensitive comparison
+    input_lower = input_string.lower()
+    
+    # List of time aggregation keywords to search for
+    time_aggregations = ['daily', 'monthly', 'weekly']
+    
+    # Check if any of the keywords are present in the input string
+    for word in time_aggregations:
+        if word in input_lower:  # If the current keyword is found in the input string
+            return word          # Return the matched keyword (e.g., 'daily', 'monthly', 'weekly')
+        
+    # If no keyword is found, check the dates provided
+    if start_date == end_date:   # If start_date and end_date are the same
+        return 'daily'           # Default aggregation to 'daily'
+    else:                        # If start_date and end_date are different
+        return 'overall'         # Default aggregation to 'overall'
 
 def build_graph_from_json(json_file_path):
     '''
@@ -552,7 +576,7 @@ def extract_json_from_llm_response(response):
             cleaned_lines.append(cleaned_line)
 
     # Step 3: Initialize a dictionary with desired keys and default `None` values
-    desired_keys = ["KPI_name", "machine_name", "start_range", "end_range", "aggregation", "operation"]
+    desired_keys = ["KPI_name", "machine_name", "start_range", "end_range", "operation"]
     result = {key: None for key in desired_keys}  # Initialize the result dictionary
 
     # Step 4: Extract key-value pairs from cleaned lines
@@ -576,10 +600,11 @@ def extract_json_from_llm_response(response):
                 break # Break the loop once the ID is found
 
     # Step 6: Set default values for missing fields
-    result["end_range"] = result.get("end_range", result["start_range"])  # Default end_range to start_range
-    result["aggregation"] = result.get("aggregation", "day")  # Default aggregation to "day"
-    result["operation"] = result.get("operation", "sum")  # Default operation to "sum"
+    if result["end_range"] == 'null':
+        result["end_range"] = result["start_range"]
 
+    if result["end_range"] == 'null':  
+        result["operation"] = result.get("operation", "sum")
     # Step 7: Add the retrieved machine ID to the result
     result["machine_id"] = machine_id
 
@@ -805,15 +830,20 @@ def steps(query, context, date):
 
         # Step 4: Extract query details (e.g., KPI name, machine ID, and date ranges)
         response_3 = extract_json_from_llm_response(response_3)
+        
+        aggregation = check_aggregation(query, response_3.get("start_range"), response_3.get("end_range"))
 
         #####! TOPIC KPI ENGINE
         # Step 5: Prepare the KPI engine API request URL and headers
+        print("kpi_name: ", response_3.get("KPI_name"))
+        print("machine_id: ", response_3.get("machine_id"))
+
         kpi_url = f"https://api-layer/KPI/{response_3.get('KPI_name')}/{response_3.get('machine_id')}/values"
 
         try:
             headers_to_send = {
                 "Authorization": "Bearer "+TOKEN,  # Authorization header with Bearer token
-                "aggregationInterval": response_3.get("aggregation"),  # Aggregation interval (e.g., day, week)
+                "aggregationInterval": aggregation,  # Aggregation interval (e.g., day, week)
                 "aggregationOP": response_3.get("operation"),          # Aggregation operation (e.g., sum, avg)
                 "startDate": response_3.get("start_range"),            # Start date for KPI values
                 "endDate": response_3.get("end_range")                 # End date for KPI values
