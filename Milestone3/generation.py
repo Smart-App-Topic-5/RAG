@@ -263,7 +263,7 @@ def get_token():
     resposne = requests.post("https://api-layer/user/login", headers = {"username": USERNAME, "password": PASSWORD})
 
     if resposne.status_code == 200:
-        return resposne.json()["token"]
+        return resposne.json()
     else:
         return None
 
@@ -874,7 +874,7 @@ def steps(query, context, date):
                 kpi_response = response_kpi.json()  # Parse the KPI response as JSON
             
             else:
-                return generate_string("Error: Failed to contact the KPI engine API.")
+                return generate_string("Error: Failed to contact the KPI engine.")
 
         except Exception as e:  # Handle exceptions that occur during the API request
             print(f"An error occurred: {e}")
