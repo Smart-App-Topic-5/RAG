@@ -835,6 +835,10 @@ def steps(query, context, date):
 
         #####! TOPIC KPI ENGINE
         # Step 5: Prepare the KPI engine API request URL and headers
+
+        if response_3.get('KPI_name') or response_3.get('machine_id') is None:
+            return generate_string("Error: KPI name or machine not found in the query.")
+
         kpi_url = f"https://api-layer/KPI/{response_3.get('KPI_name')}/{response_3.get('machine_id')}/values"
 
         try:
