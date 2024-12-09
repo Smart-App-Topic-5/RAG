@@ -29,8 +29,10 @@ import time
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-TOKEN = "test_token" # Token to access the API
 KB_PATH = "/app/Milestone3/kb.json" # Path to the KB file
+
+USERNAME = "RAG"
+PASSWORD = "password4"
 
 # LLM MODEL 
 model = ChatOpenAI(
@@ -251,6 +253,20 @@ chain6 = (
 )
 
 
+def get_token():
+    """
+    This function retrieves the token value from the API by sending a POST request with the username and password.
+
+    Returns:
+    - str: The token value.
+    """
+    resposne = requests.post("https://api-layer/user/login", headers = {"username": USERNAME, "password": PASSWORD})
+
+    if resposne.status_code == 200:
+        return resposne.json()["token"]
+    else:
+        return None
+
 def check_aggregation(input_string, start_date, end_date):
     """
     Checks if the input string contains the words 'daily', 'monthly', or 'weekly'
@@ -419,7 +435,7 @@ def periodic_read_kb():
     '''
     while True:
         print("Reading kb...")  # Log message indicating the KB reading process has started
-        # read_kb()  # Uncomment this line to call the KB reading function if needed
+        read_kb()  # Uncomment this line to call the KB reading function if needed
         time.sleep(3600)  # Pause execution for 1 hour (3600 seconds)
         print("completed reading kb")  # Log message indicating the KB reading process has completed
 
@@ -447,7 +463,7 @@ def read_kb():
     try:
         # Prepare headers with an authorization token
         headers_to_send = {
-            "Authorization": "Bearer "+TOKEN  # Authorization header for secure access
+            "Authorization": "Bearer "+get_token()  # Authorization header for secure access
         }
         response = requests.get(url, verify=False, headers=headers_to_send)  
         # Make an HTTP GET request to fetch data from the KB API
@@ -843,7 +859,7 @@ def steps(query, context, date):
 
         try:
             headers_to_send = {
-                "Authorization": "Bearer "+TOKEN,  # Authorization header with Bearer token
+                "Authorization": "Bearer "+get_token(),  # Authorization header with Bearer token
                 "aggregationInterval": aggregation,  # Aggregation interval (e.g., day, week)
                 "aggregationOP": response_3.get("operation"),          # Aggregation operation (e.g., sum, avg)
                 "startDate": response_3.get("start_range"),            # Start date for KPI values
@@ -856,8 +872,9 @@ def steps(query, context, date):
             # Step 7: Check if the request was successful
             if response_kpi.status_code == 200:
                 kpi_response = response_kpi.json()  # Parse the KPI response as JSON
+            
             else:
-                print("Error: KPI engine request failed.")  # Log an error if the status code is not 200
+                return generate_string("Error: Failed to contact the KPI engine API.")
 
         except Exception as e:  # Handle exceptions that occur during the API request
             print(f"An error occurred: {e}")
