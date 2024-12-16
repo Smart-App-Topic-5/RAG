@@ -344,19 +344,39 @@ def build_graph_from_json(json_file_path):
             category=kpi["category"],  # Category of the KPI
             unit=kpi["unit"],  # Measurement unit of the KPI
             relation_number=kpi["relationNumber"],  # Relation number (a specific attribute)
-            formula=kpi.get("formula")  # Formula (optional; None if not provided)
+            formula=kpi.get("formula"),  # Formula (optional; None if not provided)
+            kpi_id=kpi["nameID"]         
         )
 
     # Add relations (edges) between machines and KPIs
     for rel in data.get("relation", []):  # Iterate through the "relation" list in the JSON data
+        machine = rel["machineID"]  # Extract the machine ID
+        kpi_rel = rel["kpiID"]  # Extract the KPI ID
+
+        #take the kpi that has relationNumber = kpi_rel
+    
+
+        #scorri tutti i kpi dal Grafo
+
+        kpi_nodes = [(node, data) for node, data in G.nodes(data=True) if "Base KPI" in data.get("node_type", "") or "Derived KPI" in data.get("node_type", "")]
+        
+        kpi_def = None
+        for kpi in kpi_nodes:
+            _,values = kpi
+            if values["relation_number"] == kpi_rel:
+                kpi_def = values["kpi_id"] 
+                break
+        
+
         G.add_edge(  # Add a directed edge between machine and KPI
+            kpi_def,  # Target node: kpiID
             rel["machineID"],  # Source node: machineID
-            rel["kpiID"],  # Target node: kpiID
             relationship="monitors"  # Edge attribute to describe the relationship
         )
 
     # Return the constructed graph
     return G
+
 
 def describe_networkx_graph(G):
     '''
@@ -434,25 +454,8 @@ def describe_networkx_graph(G):
     # Return the dictionary containing all node descriptions
     return descriptions
 
-def periodic_read_kb():
-    '''
-    This function runs in an infinite loop, periodically calling the `read_kb` function
-    to fetch and update the knowledge base every 3600 seconds (1 hour).
-
-    It is designed to be run as a daemon thread to ensure non-blocking execution in the main program.
-    '''
-    while True:
-        print("Reading kb...")  # Log message indicating the KB reading process has started
-        read_kb()  # Uncomment this line to call the KB reading function if needed
-        time.sleep(3600)  # Pause execution for 1 hour (3600 seconds)
-        print("completed reading kb")  # Log message indicating the KB reading process has completed
-
-# Start the thread
-thread = threading.Thread(target=periodic_read_kb, daemon=True)
-# Create a daemon thread that runs the `periodic_read_kb` function.
-# The `daemon=True` ensures the thread exits when the main program ends.
-
-thread.start()  # Start the thread execution
+# Usage
+G = build_graph_from_json(KB_PATH)  # Assuming this function is already implemented
 
 def read_kb():
     '''
@@ -502,6 +505,26 @@ def read_kb():
 
     except Exception as e:  # Handle any exceptions that occur during the process
         print(f"An error occurred: {e}")  # Log the exception details
+
+def periodic_read_kb():
+    '''
+    This function runs in an infinite loop, periodically calling the `read_kb` function
+    to fetch and update the knowledge base every 3600 seconds (1 hour).
+
+    It is designed to be run as a daemon thread to ensure non-blocking execution in the main program.
+    '''
+    while True:
+        print("Reading kb...")  # Log message indicating the KB reading process has started
+        read_kb()  # Uncomment this line to call the KB reading function if needed
+        time.sleep(3600)  # Pause execution for 1 hour (3600 seconds)
+        print("completed reading kb")  # Log message indicating the KB reading process has completed
+
+# Start the thread
+thread = threading.Thread(target=periodic_read_kb, daemon=True)
+# Create a daemon thread that runs the `periodic_read_kb` function.
+# The `daemon=True` ensures the thread exits when the main program ends.
+
+thread.start()  # Start the thread execution
 
 # RETRIEVAL
 def faiss_generation():
@@ -600,7 +623,7 @@ def extract_json_from_llm_response(response):
             cleaned_lines.append(cleaned_line)
 
     # Step 3: Initialize a dictionary with desired keys and default `None` values
-    desired_keys = ["kpi_name", "machine_name", "start_range", "end_range", "operation"]
+    desired_keys = ["kpi_name", "machine_name", "start_range", "end_range", "operation", "start_date", "end_date", "kpi", "machine"]
     result = {key: None for key in desired_keys}  # Initialize the result dictionary
 
     # Step 4: Extract key-value pairs from cleaned lines
@@ -614,9 +637,22 @@ def extract_json_from_llm_response(response):
 
 
     # Step 5: Retrieve the machine ID from the knowledge base (KB)
-    machine_name = result["machine_name"] # Extract the machine name from the result
+    if result["machine_name"] is not None:  # If the machine name is provided in the result
+        machine_name = result["machine_name"] # Extract the machine name from the result
+    else:
+        machine_name = result["machine"] # Extract the machine name from the result
+        result["machine_name"] = result["machine"]
+    del result["machine"]
+    
+
+    if result["kpi_name"] is not None:  # If the KPI name is provided in the result
+        kpi_name = result["kpi_name"] # Extract the KPI name from the result
+    else:
+        kpi_name = result["kpi"]
+        result["kpi_name"] = result["kpi"]
+    del result["kpi"]
+
     machine_id = None # Initialize the machine ID as None
-    kpi_name = result["kpi_name"] # Extract the KPI name from the result
     kpi_id = None # Initialize the KPI ID as None
 
     with open(KB_PATH, "r") as file: # Open the KB file in read mode
@@ -633,16 +669,40 @@ def extract_json_from_llm_response(response):
                     kpi_id = kpi["nameID"] # Retrieve the KPI ID
                     break # Break the loop once the ID is found
 
+
+
+    # in result i valori "null" falli diventare None
+
+    for key in result:
+        if result[key] == "null":
+            result[key] = None
+
+    print(result)
+
     # Step 6: Set default values for missing fields
-    if result["end_range"] == "null": # If end_range is not provided
+    if result["start_range"] is None: # If start_range is not provided
+        result["start_range"] = result["start_date"] # Use start_date as the default value
+        # remove the key start_date from result
+    del result["start_date"]
+
+    if result["end_range"] is None and result["end_date"] is None: # If end_range is not provided
         result["end_range"] = result["start_range"]
 
-    if result["operation"] == "null": # If operation is not provided
+    elif result["end_range"] is None and result["end_date"] is not None:
+        result["end_range"] = result["end_date"]    
+    del result["end_date"]
+
+
+    if result["operation"] is None: # If operation is not provided
         result["operation"] = "sum"
-    
+
+
+    print(result)
 
     # La data in formato stringa
     end_date = result["end_range"]
+
+    
     # Converti la stringa in oggetto datetime
     date_obj = datetime.strptime(end_date, '%Y-%m-%d')
     # Aggiungi un giorno
@@ -877,6 +937,8 @@ def steps(query, context, date):
         input_data = {"context": context, "query": query, "current_date": date}
         response_3 = chain3.invoke(input_data)  # Invoke chain3 to get structured query details
 
+        print("="*10)
+        print(response_3)
 
         # Step 4: Extract query details (e.g., KPI name, machine ID, and date ranges)
         response_3 = extract_json_from_llm_response(response_3)
@@ -884,8 +946,15 @@ def steps(query, context, date):
         aggregation = check_aggregation(query, response_3.get("start_range"), response_3.get("end_range"))
 
 
-        # Step 5: Prepare the KPI engine API request URL and headers
+        print("="*10)
+        print(context)
+        print("="*10)
+        print(response_3)
+        print("="*10) 
+        print(aggregation)
 
+
+        # Step 5: Prepare the KPI engine API request URL and headers
         if response_3.get('kpi_id') is None:
             return generate_string("Error: KPI name not found in the query.")
         
