@@ -621,10 +621,11 @@ def extract_json_from_llm_response(response):
 
     with open(KB_PATH, "r") as file: # Open the KB file in read mode
         kb_data = json.load(file) # Load the KB data from the file
-        for machine in kb_data["machines"]: # Iterate through the machines in the KB
-            if machine["name"] == machine_name: # If the machine name matches the query
-                machine_id = machine["id"] # Retrieve the machine ID
-                break # Break the loop once the ID is found
+        if machine_name is not None:
+            for machine in kb_data["machines"]: # Iterate through the machines in the KB
+                if machine["name"].lower() == machine_name.lower(): # If the machine name matches the query
+                    machine_id = machine["id"] # Retrieve the machine ID
+                    break # Break the loop once the ID is found
         
         if kpi_name is not None:     
             for kpi in kb_data["kpis"]: # Iterate through the KPIs in the KB
@@ -633,11 +634,11 @@ def extract_json_from_llm_response(response):
                     break # Break the loop once the ID is found
 
     # Step 6: Set default values for missing fields
-    if result["end_range"] == 'null':
+    if result["end_range"] == "null": # If end_range is not provided
         result["end_range"] = result["start_range"]
 
-    if result["operation"] == 'null':  
-        result["operation"] = result.get("operation", "sum")
+    if result["operation"] == "null": # If operation is not provided
+        result["operation"] = "sum"
     
 
     # La data in formato stringa
@@ -885,11 +886,11 @@ def steps(query, context, date):
 
         # Step 5: Prepare the KPI engine API request URL and headers
 
-        if response_3.get('kpi_id') is None or response_3.get('machine_id') is None:
-            return generate_string("Error: KPI name or machine not found in the query.")
-
-        print(response_3)
-        print(aggregation)
+        if response_3.get('kpi_id') is None:
+            return generate_string("Error: KPI name not found in the query.")
+        
+        if response_3.get('machine_id') is None:
+            return generate_string("Error: Machine not found in the query.")
 
 
         # TOPIC KPI ENGINE
