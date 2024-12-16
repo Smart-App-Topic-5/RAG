@@ -987,6 +987,7 @@ def steps(query, context, date):
 
         except Exception as e:  # Handle exceptions that occur during the API request
             print(f"An error occurred: {e}")
+            return generate_string("Error: Failed to contact the KPI engine. ")
 
         # Step 8: Create the final response using the KPI data
         final_response = response_creation(query, kpi_response, response_3.get("kpi_name"))
