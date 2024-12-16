@@ -16,7 +16,7 @@ import re
 import networkx as nx
 import torch
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 from fpdf import FPDF
 import pandas as pd
@@ -32,7 +32,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 KB_PATH = "/app/Milestone3/kb.json" # Path to the KB file
 
 USERNAME = "RAG"
-PASSWORD = "password4"
+PASSWORD = "password3"
 
 # LLM MODEL 
 model = ChatOpenAI(
@@ -260,7 +260,7 @@ def get_token():
     Returns:
     - str: The token value.
     """
-    resposne = requests.post("https://api-layer/user/login", headers = {"username": USERNAME, "password": PASSWORD})
+    resposne = requests.post("https://api-layer/user/login", headers = {"username": USERNAME, "password": PASSWORD}, verify=False)
 
     if resposne.status_code == 200:
         return resposne.json()
@@ -335,7 +335,8 @@ def build_graph_from_json(json_file_path):
             kpi["nameID"],  # Node ID is set as the KPI's nameID
             node_type="Base KPI" if kpi.get("formula") is None else "Derived KPI",  
             # Determine if KPI is 'Base KPI' (no formula) or 'Derived KPI' (has a formula)
-            name=kpi["description"],  # Description of the KPI
+            name=kpi["nameID"].replace("_"," "),  # Description of the KPI
+            description=kpi["description"],  # Description of the KPI
             category=kpi["category"],  # Category of the KPI
             unit=kpi["unit"],  # Measurement unit of the KPI
             relation_number=kpi["relationNumber"],  # Relation number (a specific attribute)
@@ -405,6 +406,7 @@ def describe_networkx_graph(G):
     for node in kpi_nodes:  # Iterate over all KPI nodes
         data = G.nodes[node]  # Retrieve node attributes
         kpi_name = data.get('name', 'unknown name')  # Get KPI name (default: 'unknown name')
+        description_kpi = data.get('description', 'no description')  # Get KPI description
         category = data.get('category', 'unknown category')  # Get KPI category
         has_formula = "Derived KPI" in data.get("node_type", "")  # Check if the KPI is derived (has a formula)
         formula = data.get('formula', 'no formula') if has_formula else 'no formula'  
@@ -419,6 +421,8 @@ def describe_networkx_graph(G):
             description += "It is a base KPI with no formula."
 
         description += f"The unit of measurement is {unit}."
+
+        description += f" It is {description_kpi}"  # Add the KPI description to the overall description
 
         # Add the description to the dictionary with the KPI name as the key
         descriptions[kpi_name] = description
@@ -463,7 +467,7 @@ def read_kb():
     try:
         # Prepare headers with an authorization token
         headers_to_send = {
-            "Authorization": "Bearer "+get_token()  # Authorization header for secure access
+            "Authorization": get_token()  # Authorization header for secure access
         }
         response = requests.get(url, verify=False, headers=headers_to_send)  
         # Make an HTTP GET request to fetch data from the KB API
@@ -592,7 +596,7 @@ def extract_json_from_llm_response(response):
             cleaned_lines.append(cleaned_line)
 
     # Step 3: Initialize a dictionary with desired keys and default `None` values
-    desired_keys = ["KPI_name", "machine_name", "start_range", "end_range", "operation"]
+    desired_keys = ["kpi_name", "machine_name", "start_range", "end_range", "operation"]
     result = {key: None for key in desired_keys}  # Initialize the result dictionary
 
     # Step 4: Extract key-value pairs from cleaned lines
@@ -608,11 +612,19 @@ def extract_json_from_llm_response(response):
     # Step 5: Retrieve the machine ID from the knowledge base (KB)
     machine_name = result["machine_name"] # Extract the machine name from the result
     machine_id = None # Initialize the machine ID as None
+    kpi_name = result["kpi_name"] # Extract the KPI name from the result
+    kpi_id = None # Initialize the KPI ID as None
+    
     with open(KB_PATH, "r") as file: # Open the KB file in read mode
         kb_data = json.load(file) # Load the KB data from the file
         for machine in kb_data["machines"]: # Iterate through the machines in the KB
             if machine["name"] == machine_name: # If the machine name matches the query
                 machine_id = machine["id"] # Retrieve the machine ID
+                break # Break the loop once the ID is found
+                
+        for kpi in kb_data["kpis"]: # Iterate through the KPIs in the KB
+            if kpi["nameID"].replace("_"," ").lower() == kpi_name.lower(): # If the KPI name matches the query
+                kpi_id = kpi["nameID"] # Retrieve the KPI ID
                 break # Break the loop once the ID is found
 
     # Step 6: Set default values for missing fields
@@ -621,8 +633,22 @@ def extract_json_from_llm_response(response):
 
     if result["end_range"] == 'null':  
         result["operation"] = result.get("operation", "sum")
+    
+
+    # La data in formato stringa
+    end_date = result["end_range"]
+    # Converti la stringa in oggetto datetime
+    date_obj = datetime.strptime(end_date, '%Y-%m-%d')
+    # Aggiungi un giorno
+    new_date_obj = date_obj + timedelta(days=1)
+    # Converti di nuovo in stringa
+    new_date_str = new_date_obj.strftime('%Y-%m-%d')
+    # Aggiorna il valore di end_range
+    result["end_range"] = new_date_str  
+
     # Step 7: Add the retrieved machine ID to the result
     result["machine_id"] = machine_id
+    result["kpi_id"] = kpi_id
 
     # Return the formatted result dictionary
     return result
@@ -771,8 +797,11 @@ def response_creation(query, kpi_response, kpi_name):
             based on the KPI data and query context.
     """
 
-    # Step 1: Handle case where only a single KPI value is returned
-    if len(kpi_response["values"]) == 1:  # Check if there is only one value in the response
+    # Step 1: Handle the case where no data is found
+    if len(kpi_response["values"]) == 0:
+        return generate_string("No data found for the given query.")
+    # Step 2: Handle case where only a single KPI value is returned
+    elif len(kpi_response["values"]) == 1:  # Check if there is only one value in the response
         kpi_value = kpi_response["value"]  # Extract the KPI value
         unit = kpi_response["unit"]        # Extract the KPI unit
 
@@ -782,9 +811,7 @@ def response_creation(query, kpi_response, kpi_name):
 
         # Format the output as a structured text response
         response_4 = generate_string(response_4)
-        return response_4
-
-    # Step 2: Handle case where multiple KPI values are returned
+        return response_4# Step 3: Handle case where multiple KPI values are returned
     else:
         values = kpi_response["values"]  # Extract all KPI values from the response
 
@@ -849,17 +876,18 @@ def steps(query, context, date):
         
         aggregation = check_aggregation(query, response_3.get("start_range"), response_3.get("end_range"))
 
-        #####! TOPIC KPI ENGINE
+
         # Step 5: Prepare the KPI engine API request URL and headers
 
-        if response_3.get('KPI_name') or response_3.get('machine_id') is None:
+        if response_3.get('kpi_id') is None or response_3.get('machine_id') is None:
             return generate_string("Error: KPI name or machine not found in the query.")
 
-        kpi_url = f"https://api-layer/KPI/{response_3.get('KPI_name')}/{response_3.get('machine_id')}/values"
+        # TOPIC KPI ENGINE
+        kpi_url = f"https://api-layer/KPI/{response_3.get('kpi_id')}/{response_3.get('machine_id')}/values"
 
         try:
             headers_to_send = {
-                "Authorization": "Bearer "+get_token(),  # Authorization header with Bearer token
+                "Authorization": get_token(),  # Authorization header with Bearer token
                 "aggregationInterval": aggregation,  # Aggregation interval (e.g., day, week)
                 "aggregationOP": response_3.get("operation"),          # Aggregation operation (e.g., sum, avg)
                 "startDate": response_3.get("start_range"),            # Start date for KPI values
@@ -880,7 +908,7 @@ def steps(query, context, date):
             print(f"An error occurred: {e}")
 
         # Step 8: Create the final response using the KPI data
-        final_response = response_creation(query, kpi_response, response_3.get("KPI_name"))
+        final_response = response_creation(query, kpi_response, response_3.get("kpi_name"))
 
     # Step 9: Return the structured final response
     return final_response
