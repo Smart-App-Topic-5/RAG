@@ -614,18 +614,23 @@ def extract_json_from_llm_response(response):
     machine_id = None # Initialize the machine ID as None
     kpi_name = result["kpi_name"] # Extract the KPI name from the result
     kpi_id = None # Initialize the KPI ID as None
-    
+    print("kpi_name====================")
+    print(kpi_name)
+
     with open(KB_PATH, "r") as file: # Open the KB file in read mode
         kb_data = json.load(file) # Load the KB data from the file
         for machine in kb_data["machines"]: # Iterate through the machines in the KB
             if machine["name"] == machine_name: # If the machine name matches the query
                 machine_id = machine["id"] # Retrieve the machine ID
                 break # Break the loop once the ID is found
-                
-        for kpi in kb_data["kpis"]: # Iterate through the KPIs in the KB
-            if kpi["nameID"].replace("_"," ").lower() == kpi_name.lower(): # If the KPI name matches the query
-                kpi_id = kpi["nameID"] # Retrieve the KPI ID
-                break # Break the loop once the ID is found
+        
+        if kpi_name is not None:     
+            for kpi in kb_data["kpis"]: # Iterate through the KPIs in the KB
+                if kpi["nameID"].replace("_"," ").lower() == kpi_name.lower(): # If the KPI name matches the query
+                    print("found================")
+                    print(kpi["nameID"])
+                    kpi_id = kpi["nameID"] # Retrieve the KPI ID
+                    break # Break the loop once the ID is found
 
     # Step 6: Set default values for missing fields
     if result["end_range"] == 'null':
@@ -870,6 +875,8 @@ def steps(query, context, date):
         # Step 3: If chain1 says historical data is needed, invoke chain3 to extract query details
         input_data = {"context": context, "query": query, "current_date": date}
         response_3 = chain3.invoke(input_data)  # Invoke chain3 to get structured query details
+
+        print(response_3)
 
         # Step 4: Extract query details (e.g., KPI name, machine ID, and date ranges)
         response_3 = extract_json_from_llm_response(response_3)
