@@ -293,10 +293,14 @@ def check_aggregation(input_string, start_date, end_date):
             return word          # Return the matched keyword (e.g., 'daily', 'monthly', 'weekly')
         
     # If no keyword is found, check the dates provided
-    if start_date == end_date:   # If start_date and end_date are the same
-        return 'daily'           # Default aggregation to 'daily'
-    else:                        # If start_date and end_date are different
-        return 'overall'         # Default aggregation to 'overall'
+    start_date_obj = datetime.strptime(start_date, '%Y-%m-%d')
+    end_date_obj = datetime.strptime(end_date, '%Y-%m-%d')
+    
+    # If start_date is exactly one day before end_date
+    if start_date_obj + timedelta(days=1) == end_date_obj:
+        return 'daily'  # Default aggregation to 'daily' if start_date is the day before end_date
+    else:
+        return 'overall'  # Default aggregation to 'overall' if start_date is not the day before end_date
 
 def build_graph_from_json(json_file_path):
     '''
@@ -632,7 +636,7 @@ def extract_json_from_llm_response(response):
     if result["end_range"] == 'null':
         result["end_range"] = result["start_range"]
 
-    if result["end_range"] == 'null':  
+    if result["operation"] == 'null':  
         result["operation"] = result.get("operation", "sum")
     
 
@@ -884,6 +888,10 @@ def steps(query, context, date):
         if response_3.get('kpi_id') is None or response_3.get('machine_id') is None:
             return generate_string("Error: KPI name or machine not found in the query.")
 
+        print(response_3)
+        print(aggregation)
+
+
         # TOPIC KPI ENGINE
         kpi_url = f"https://api-layer/KPI/{response_3.get('kpi_id')}/{response_3.get('machine_id')}/values"
 
@@ -896,6 +904,7 @@ def steps(query, context, date):
                 "endDate": response_3.get("end_range")                 # End date for KPI values
             }
 
+
             # Step 6: Make an HTTP GET request to the KPI engine API
             response_kpi = requests.get(kpi_url, headers=headers_to_send, verify=False)
 
@@ -904,7 +913,7 @@ def steps(query, context, date):
                 kpi_response = response_kpi.json()  # Parse the KPI response as JSON
             
             else:
-                return generate_string("Error: Failed to contact the KPI engine.")
+                return generate_string("Error: Failed to contact the KPI engine. "+str(response_kpi.status_code))
 
         except Exception as e:  # Handle exceptions that occur during the API request
             print(f"An error occurred: {e}")
