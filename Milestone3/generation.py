@@ -623,7 +623,7 @@ def extract_json_from_llm_response(response):
             cleaned_lines.append(cleaned_line)
 
     # Step 3: Initialize a dictionary with desired keys and default `None` values
-    desired_keys = ["kpi_name", "machine_name", "start_range", "end_range", "operation", "start_date", "end_date", "kpi", "machine"]
+    desired_keys = ["kpi_name", "machine_name", "start_range", "end_range", "operation", "start_date", "end_date", "kpi", "machine","date"]
     result = {key: None for key in desired_keys}  # Initialize the result dictionary
 
     # Step 4: Extract key-value pairs from cleaned lines
@@ -677,13 +677,17 @@ def extract_json_from_llm_response(response):
         if result[key] == "null":
             result[key] = None
 
-    print(result)
 
     # Step 6: Set default values for missing fields
     if result["start_range"] is None: # If start_range is not provided
-        result["start_range"] = result["start_date"] # Use start_date as the default value
+        if result["start_date"] is not None: # If start_date is provided
+            result["start_range"] = result["start_date"] # Use start_date as the default value
+        else:
+            result["start_range"] = result["date"]
         # remove the key start_date from result
+
     del result["start_date"]
+    del result["date"]
 
     if result["end_range"] is None and result["end_date"] is None: # If end_range is not provided
         result["end_range"] = result["start_range"]
@@ -697,7 +701,6 @@ def extract_json_from_llm_response(response):
         result["operation"] = "sum"
 
 
-    print(result)
 
     # La data in formato stringa
     end_date = result["end_range"]
@@ -937,8 +940,6 @@ def steps(query, context, date):
         input_data = {"context": context, "query": query, "current_date": date}
         response_3 = chain3.invoke(input_data)  # Invoke chain3 to get structured query details
 
-        print("="*10)
-        print(response_3)
 
         # Step 4: Extract query details (e.g., KPI name, machine ID, and date ranges)
         response_3 = extract_json_from_llm_response(response_3)
@@ -946,12 +947,6 @@ def steps(query, context, date):
         aggregation = check_aggregation(query, response_3.get("start_range"), response_3.get("end_range"))
 
 
-        print("="*10)
-        print(context)
-        print("="*10)
-        print(response_3)
-        print("="*10) 
-        print(aggregation)
 
 
         # Step 5: Prepare the KPI engine API request URL and headers
@@ -969,7 +964,7 @@ def steps(query, context, date):
             headers_to_send = {
                 "Authorization": get_token(),  # Authorization header with Bearer token
                 "aggregationInterval": aggregation,  # Aggregation interval (e.g., day, week)
-                "aggregationOP": response_3.get("operation"),          # Aggregation operation (e.g., sum, avg)
+                "aggregationOp": response_3.get("operation"),          # Aggregation operation (e.g., sum, avg)
                 "startDate": response_3.get("start_range"),            # Start date for KPI values
                 "endDate": response_3.get("end_range")                 # End date for KPI values
             }
@@ -983,7 +978,7 @@ def steps(query, context, date):
                 kpi_response = response_kpi.json()  # Parse the KPI response as JSON
             
             else:
-                return generate_string("Error: Failed to contact the KPI engine. "+str(response_kpi.status_code))
+                return generate_string("Error: Failed to contact the KPI engine. "+str(response_kpi.status_code)+" "+str(response_kpi.text))
 
         except Exception as e:  # Handle exceptions that occur during the API request
             print(f"An error occurred: {e}")
