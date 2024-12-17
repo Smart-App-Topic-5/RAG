@@ -871,7 +871,7 @@ def response_creation(query, kpi_response, kpi_name):
         return generate_string("No data found for the given query.")
     # Step 2: Handle case where only a single KPI value is returned
     elif len(kpi_response["values"]) == 1:  # Check if there is only one value in the response
-        kpi_value = kpi_response["values"]["value"]  # Extract the KPI value
+        kpi_value = kpi_response["values"][0]["value"]  # Extract the KPI value
         unit = kpi_response["unit"]        # Extract the KPI unit
 
         # Prepare input data for further processing
