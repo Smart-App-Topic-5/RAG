@@ -629,7 +629,7 @@ def extract_json_from_llm_response(response):
     # Step 4: Extract key-value pairs from cleaned lines
     for line in cleaned_lines:  # Iterate through cleaned lines
         for key in desired_keys:  # Check for desired keys
-            if line.startswith(f'"{key}"'):  # If the line starts with a specific key
+            if line.lower().startswith(f'"{key}"'):  # If the line starts with a specific key
                 value = line.split(':', 1)[-1].strip().strip('"')  # Extract the value after ':' and clean it
                 result[key] = value  # Store the value in the result dictionary
                 break  # Break once a key is matched
